@@ -12,6 +12,9 @@ const DEV_ROUTES: Record<string, LazyExoticComponent<() => JSX.Element>> = impor
           default: m.RecordReferenceScreen,
         })),
       ),
+      '/dev/score': lazy(() =>
+        import('@/ui/screens/dev/ScoreDemoScreen').then(m => ({ default: m.ScoreDemoScreen })),
+      ),
       '/dev/ui': lazy(() =>
         import('@/ui/screens/dev/UiKitScreen').then(m => ({ default: m.UiKitScreen })),
       ),

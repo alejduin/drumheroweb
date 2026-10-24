@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { GameCanvas } from '@/renderer/GameCanvas'
+import { GameCanvas } from '@/renderer/legacy/GameCanvasV1'
 import { useGameEngine } from '@/hooks/useGameEngine'
 import { useGameStore } from '@/store/legacy/gameStoreV1'
 import type { SongData } from '@/types'

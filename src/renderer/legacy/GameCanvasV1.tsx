@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { gameEngine } from '@/engine/legacy/GameEngineV1'
 import { flattenNotes } from '@/engine/SongParser'
-import { createEffect, drawEffects, pruneEffects } from '@/renderer/EffectsRenderer'
-import { drawHUD } from '@/renderer/HUDRenderer'
-import { drawNotes } from '@/renderer/NoteRenderer'
+import { createEffect, drawEffects, pruneEffects } from '@/renderer/legacy/EffectsRendererV1'
+import { drawHUD } from '@/renderer/legacy/HUDRendererV1'
+import { drawNotes } from '@/renderer/legacy/NoteRendererV1'
 import { useGameStore } from '@/store/legacy/gameStoreV1'
-import type { ActiveEffect } from '@/renderer/EffectsRenderer'
+import type { ActiveEffect } from '@/renderer/legacy/EffectsRendererV1'
 import type { NoteEvent, SongData } from '@/types'
 
 interface GameCanvasProps {
