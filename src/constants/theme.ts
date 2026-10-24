@@ -62,3 +62,8 @@ export function applyAccent(name: AccentName, root: HTMLElement = document.docum
   if (name === DEFAULT_ACCENT) root.removeAttribute('data-accent')
   else root.setAttribute('data-accent', name)
 }
+
+/** Acento activo (el canvas no hereda CSS: lo lee de la variable --color-accent). */
+export function currentAccent(root: HTMLElement = document.documentElement): string {
+  return getComputedStyle(root).getPropertyValue('--color-accent').trim() || THEME_COLORS.accent
+}

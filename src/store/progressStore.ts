@@ -1,25 +1,22 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { getStars } from '@/constants/game'
-import type { HitAccuracy } from '@/types'
+import { starsFor } from '@/constants/scoring'
+import type { Stars } from '@/constants/scoring'
 
 export interface SongScore {
   songId: string
   score: number
-  stars: 0 | 1 | 2 | 3 | 4 | 5
-  accuracy: Record<HitAccuracy, number>
+  precision: number | null
+  stars: Stars
   playedAt: number // Date.now()
 }
 
 interface ProgressStore {
-  /** Mejor score por canción (songId → SongScore). */
+  /** Mejor puntuación por canción (songId → SongScore). */
   bestScores: Record<string, SongScore>
 
-  /**
-   * Guarda el score de una partida terminada.
-   * Solo reemplaza si supera el mejor score existente.
-   */
-  saveSongScore(songId: string, score: number, accuracy: Record<HitAccuracy, number>): void
+  /** Guarda una partida terminada; solo reemplaza si supera la mejor. B14 lo amplía. */
+  saveSongScore(songId: string, score: number, precision: number | null): void
 
   getBestScore(songId: string): SongScore | null
   clearAll(): void
@@ -30,18 +27,19 @@ export const useProgressStore = create<ProgressStore>()(
     (set, get) => ({
       bestScores: {},
 
-      saveSongScore(songId, score, accuracy) {
+      saveSongScore(songId, score, precision) {
         const existing = get().bestScores[songId]
         if (existing && existing.score >= score) return
-
-        const total = Object.values(accuracy).reduce((a, b) => a + b, 0)
-        const hitRatio = total > 0 ? (total - accuracy.miss) / total : 0
-        const stars = getStars(hitRatio)
-
         set(state => ({
           bestScores: {
             ...state.bestScores,
-            [songId]: { songId, score, stars, accuracy, playedAt: Date.now() },
+            [songId]: {
+              songId,
+              score,
+              precision,
+              stars: starsFor(precision),
+              playedAt: Date.now(),
+            },
           },
         }))
       },
@@ -54,6 +52,11 @@ export const useProgressStore = create<ProgressStore>()(
         set({ bestScores: {} })
       },
     }),
-    { name: 'drumhero-progress' },
+    {
+      name: 'drumhero-progress',
+      // v1: precisión v2 en lugar del conteo great/good de V1 (las puntuaciones V1 no se comparan)
+      version: 1,
+      migrate: () => ({ bestScores: {} }) as unknown as ProgressStore,
+    },
   ),
 )

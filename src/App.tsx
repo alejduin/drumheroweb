@@ -1,80 +1,83 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { SongBundle } from '@/game/GameSession'
+import { useMidi } from '@/hooks/useMidi'
+import type { ScoreResults } from '@/scoring/ScoreManager'
 import { BrowserWarning } from '@/ui/components/BrowserWarning'
 import { MidiConnectionToast } from '@/ui/components/MidiConnectionToast'
-import { useMidi } from '@/hooks/useMidi'
-import { useGameStore } from '@/store/legacy/gameStoreV1'
 import { GameScreen } from '@/ui/screens/GameScreen'
 import { HomeScreen } from '@/ui/screens/HomeScreen'
 import { ResultsScreen } from '@/ui/screens/ResultsScreen'
 import { SettingsScreen } from '@/ui/screens/SettingsScreen'
 import { SongSelectScreen } from '@/ui/screens/SongSelectScreen'
-import type { SongData } from '@/types'
 
-type Screen = 'home' | 'song-select' | 'game' | 'settings'
+type Screen = 'home' | 'song-select' | 'game' | 'results' | 'settings'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
-  const [selectedSong, setSelectedSong] = useState<SongData | null>(null)
+  const [bundle, setBundle] = useState<SongBundle | null>(null)
+  const [results, setResults] = useState<ScoreResults | null>(null)
+  // A dónde vuelve Ajustes (Recalibrar desde la partida vuelve a la partida)
+  const [settingsReturn, setSettingsReturn] = useState<Screen>('home')
   const { connect } = useMidi()
 
   // Auto-conectar MIDI al montar (solo si el browser lo soporta)
   useEffect(() => {
     if ('requestMIDIAccess' in navigator) {
-      connect()
+      void connect()
     }
   }, [connect])
 
-  // El engine emite 'results' cuando termina la canción
-  const gamePhase = useGameStore(s => s.phase)
-
-  function handleSongReady(song: SongData) {
-    setSelectedSong(song)
-    setScreen('game')
+  const openSettings = (from: Screen) => {
+    setSettingsReturn(from)
+    setScreen('settings')
   }
 
-  function handlePlayAgain() {
-    setScreen('game')
-  }
-
-  function handleBackToMenu() {
-    setSelectedSong(null)
-    setScreen('home')
-  }
-
-  // Pantalla de resultados cuando el engine termina
-  if (gamePhase === 'results' && selectedSong) {
-    return (
-      <div className="w-screen h-screen">
-        <ResultsScreen
-          song={selectedSong}
-          onPlayAgain={handlePlayAgain}
-          onMenu={handleBackToMenu}
-        />
-      </div>
-    )
-  }
+  const handleFinished = useCallback((r: ScoreResults) => {
+    setResults(r)
+    setScreen('results')
+  }, [])
 
   return (
-    <div className="w-screen h-screen">
+    <div className="h-screen w-screen">
       <BrowserWarning />
       <MidiConnectionToast />
 
       {screen === 'home' && (
         <HomeScreen
           onPlay={() => setScreen('song-select')}
-          onSettings={() => setScreen('settings')}
+          onSettings={() => openSettings('home')}
         />
       )}
 
       {screen === 'song-select' && (
-        <SongSelectScreen onSongReady={handleSongReady} onBack={() => setScreen('home')} />
+        <SongSelectScreen
+          onSongReady={b => {
+            setBundle(b)
+            setScreen('game')
+          }}
+          onBack={() => setScreen('home')}
+        />
       )}
 
-      {screen === 'game' && selectedSong && (
-        <GameScreen song={selectedSong} onStop={handleBackToMenu} />
+      {screen === 'game' && bundle && (
+        <GameScreen
+          bundle={bundle}
+          onExit={() => setScreen('song-select')}
+          onFinished={handleFinished}
+          onRecalibrate={() => openSettings('game')}
+        />
       )}
 
-      {screen === 'settings' && <SettingsScreen onBack={() => setScreen('home')} />}
+      {screen === 'results' && bundle && results && (
+        <ResultsScreen
+          chart={bundle.chart}
+          results={results}
+          onRetry={() => setScreen('game')}
+          onMenu={() => setScreen('song-select')}
+        />
+      )}
+
+      {screen === 'settings' && <SettingsScreen onBack={() => setScreen(settingsReturn)} />}
     </div>
   )
 }

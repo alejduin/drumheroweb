@@ -59,3 +59,27 @@ export function multiplierFor(combo: number): Multiplier {
 
 // Golpes que promedia la tendencia temprano/tarde (medidor de timing)
 export const TIMING_TREND_HITS = 16
+
+// ─── Precisión (PLAN_V2 D11, D18) ─────────────────────────────────────────────
+
+// Color por umbral de precisión (secciones y compases): verde ≥ 85 %, ámbar ≥ 72 %, rojo
+export const PRECISION_GOOD = 0.85
+export const PRECISION_OK = 0.72
+
+export type PrecisionTone = 'perfect' | 'close' | 'miss'
+
+export function precisionTone(precision: number): PrecisionTone {
+  if (precision >= PRECISION_GOOD) return 'perfect'
+  if (precision >= PRECISION_OK) return 'close'
+  return 'miss'
+}
+
+// Precisión mínima para cada estrella (1 a 5); B14 la ajusta con Resultados
+export const STAR_THRESHOLDS = [0.4, 0.6, 0.75, 0.9, 0.99] as const
+
+export type Stars = 0 | 1 | 2 | 3 | 4 | 5
+
+export function starsFor(precision: number | null): Stars {
+  if (precision === null) return 0
+  return STAR_THRESHOLDS.filter(min => precision >= min).length as Stars
+}

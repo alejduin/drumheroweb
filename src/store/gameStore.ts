@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { GameEngine } from '@/engine/GameEngine'
 import { ScoreManager } from '@/scoring/ScoreManager'
-import type { ScoreResults, ScoreSnapshot } from '@/scoring/ScoreManager'
+import type { ScoreResults, ScoreSnapshot, SectionStats } from '@/scoring/ScoreManager'
 
 // ─── Estado de la partida para la UI ──────────────────────────────────────────
 // Se actualiza con cada juicio, nunca por frame (CLAUDE.md, regla 6). El canvas
@@ -23,6 +23,8 @@ export const EMPTY_SNAPSHOT: ScoreSnapshot = {
 interface GameStore {
   phase: PlayPhase
   hud: ScoreSnapshot
+  /** Precisión por sección en vivo (panel Secciones). */
+  sections: SectionStats[]
   /** Estadísticas completas al terminar la partida. */
   results: ScoreResults | null
   setPhase(phase: PlayPhase): void
@@ -32,9 +34,10 @@ interface GameStore {
 export const useGameStore = create<GameStore>(set => ({
   phase: 'idle',
   hud: EMPTY_SNAPSHOT,
+  sections: [],
   results: null,
   setPhase: phase => set({ phase }),
-  reset: () => set({ phase: 'idle', hud: EMPTY_SNAPSHOT, results: null }),
+  reset: () => set({ phase: 'idle', hud: EMPTY_SNAPSHOT, sections: [], results: null }),
 }))
 
 /** Lo que el store necesita del engine (fake en tests). */
@@ -49,7 +52,9 @@ export function bindScoring(engine: JudgementSource, manager: ScoreManager): () 
   manager.reset()
   store.reset()
 
-  const publish = () => useGameStore.setState({ hud: manager.snapshot() })
+  const live = () => ({ hud: manager.snapshot(), sections: manager.sectionStats() })
+  const publish = () => useGameStore.setState(live())
+  publish()
   const unsubs = [
     engine.onJudgement(j => {
       manager.apply(j)
@@ -57,11 +62,11 @@ export function bindScoring(engine: JudgementSource, manager: ScoreManager): () 
     }),
     engine.onReset(judgements => {
       manager.rebuild(judgements)
-      useGameStore.setState({ hud: manager.snapshot(), results: null })
+      useGameStore.setState({ ...live(), results: null })
     }),
     engine.onEnd(judgements => {
       manager.rebuild(judgements)
-      useGameStore.setState({ phase: 'ended', hud: manager.snapshot(), results: manager.results() })
+      useGameStore.setState({ ...live(), phase: 'ended', results: manager.results() })
     }),
   ]
   return () => unsubs.forEach(unsub => unsub())
@@ -69,7 +74,7 @@ export function bindScoring(engine: JudgementSource, manager: ScoreManager): () 
 
 // ─── Selectores (un componente se re-renderiza solo si cambia su valor) ───────
 
-type State = Pick<GameStore, 'phase' | 'hud' | 'results'>
+type State = Pick<GameStore, 'phase' | 'hud' | 'sections' | 'results'>
 
 export const selectPhase = (s: State) => s.phase
 export const selectScore = (s: State) => s.hud.score
@@ -78,4 +83,5 @@ export const selectMultiplier = (s: State) => s.hud.multiplier
 export const selectPrecision = (s: State) => s.hud.precision
 export const selectTimingTrend = (s: State) => s.hud.timingTrendMs
 export const selectLastJudgement = (s: State) => s.hud.last
+export const selectSections = (s: State) => s.sections
 export const selectResults = (s: State) => s.results

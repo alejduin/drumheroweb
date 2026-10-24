@@ -1,0 +1,136 @@
+import { matchingPreset } from '@/audio/Mixer'
+import type { MixChannel, MixLevels, MixPreset } from '@/audio/Mixer'
+import type { Difficulty } from '@/types'
+import type { AudioMode } from '@/game/GameSession'
+import { formatSignedMs } from '@/game/format'
+import { DIFFICULTY_LABELS } from '@/game/songMeta'
+import { Button, Checkbox, Panel, SectionLabel, SegmentedControl, Slider } from '@/ui/primitives'
+
+const PHASE_D = 'Llega en la Fase D'
+
+const PRESET_LABELS: Record<MixPreset, string> = {
+  play_drums: 'Tocar yo la batería',
+  listen: 'Escuchar la canción',
+}
+
+const MIX_ROWS: ReadonlyArray<{ channel: MixChannel; label: string }> = [
+  { channel: 'drums', label: 'Batería original' },
+  { channel: 'backing', label: 'Backing' },
+  { channel: 'metronome', label: 'Metrónomo' },
+]
+
+// Básico e Intermedio necesitan el reductor de dificultad (Fase D)
+const DIFFICULTY_OPTIONS = (['basic', 'intermediate', 'full'] as const).map(value => ({
+  value,
+  label: DIFFICULTY_LABELS[value],
+  disabled: value !== 'full',
+}))
+
+interface SessionSettingsPanelProps {
+  difficulty: Difficulty
+  mix: Readonly<MixLevels>
+  audioMode: AudioMode
+  onMixChange: (channel: MixChannel, level: number) => void
+  videoOffsetMs: number
+  latencyMs: number
+  onRecalibrate: () => void
+  dynamicsBonus: boolean
+  onDynamicsBonusChange: (on: boolean) => void
+}
+
+export function SessionSettingsPanel({
+  difficulty,
+  mix,
+  audioMode,
+  onMixChange,
+  videoOffsetMs,
+  latencyMs,
+  onRecalibrate,
+  dynamicsBonus,
+  onDynamicsBonusChange,
+}: SessionSettingsPanelProps) {
+  const preset = matchingPreset(mix)
+  const noStems = audioMode !== 'stems'
+  return (
+    <Panel
+      as="aside"
+      aria-label="Configuración"
+      title="Configuración"
+      className="min-w-[300px] flex-1 gap-4 overflow-y-auto"
+    >
+      <div className="flex flex-col gap-2">
+        <SectionLabel>Dificultad</SectionLabel>
+        <SegmentedControl
+          aria-label="Dificultad"
+          options={DIFFICULTY_OPTIONS}
+          value={difficulty}
+          onChange={() => {}}
+          fullWidth
+        />
+      </div>
+
+      <div className="flex flex-col gap-2" title={PHASE_D}>
+        <div className="flex justify-between">
+          <SectionLabel>Tempo</SectionLabel>
+          <span className="font-mono text-xs">100%</span>
+        </div>
+        <Slider aria-label="Tempo" value={100} min={50} max={100} onChange={() => {}} disabled />
+        <Checkbox label="Rampa +5% al lograr 90%" checked={false} onChange={() => {}} disabled />
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <SectionLabel>Mezclador</SectionLabel>
+        {MIX_ROWS.map(({ channel, label }) => {
+          const disabled = channel === 'drums' && noStems
+          const pct = Math.round(mix[channel] * 100)
+          return (
+            <div
+              key={channel}
+              className="flex items-center gap-2.5 text-xs"
+              title={disabled ? 'Sin stems: suena el audio completo en Backing' : undefined}
+            >
+              <span className="w-[104px] shrink-0 text-fg-2">{label}</span>
+              <Slider
+                aria-label={label}
+                tone="light"
+                value={pct}
+                valueText={`${pct} %`}
+                onChange={v => onMixChange(channel, v / 100)}
+                disabled={disabled}
+              />
+              <span className="w-[34px] shrink-0 text-right font-mono">{pct}%</span>
+            </div>
+          )
+        })}
+        <span className="text-[11px] text-muted">
+          Preset: {preset ? PRESET_LABELS[preset] : 'Personalizado'}
+          {audioMode === 'silent' && ' · canción sin audio'}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <SectionLabel>Sincronía</SectionLabel>
+        <div className="flex justify-between text-xs">
+          <span className="text-fg-2">Offset del video</span>
+          <span className="font-mono">{formatSignedMs(videoOffsetMs)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-fg-2">Latencia del kit</span>
+          <span className="font-mono">{Math.round(latencyMs)} ms</span>
+        </div>
+        <Button size="sm" onClick={onRecalibrate}>
+          Recalibrar
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-2.5 border-t border-border pt-3.5">
+        <Checkbox label="Modo espera" checked={false} onChange={() => {}} disabled />
+        <Checkbox
+          label="Puntos por dinámica"
+          checked={dynamicsBonus}
+          onChange={onDynamicsBonusChange}
+        />
+      </div>
+    </Panel>
+  )
+}

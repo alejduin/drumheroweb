@@ -320,6 +320,31 @@ describe('estados', () => {
     expect(engine.judgements).toHaveLength(1)
   })
 
+  it('finish termina antes de durationS: las pendientes son Fallo y avisa una sola vez', () => {
+    const { engine, playUntil } = setup([note(1), note(3), note(5)])
+    const ends = vi.fn()
+    engine.onEnd(ends)
+    playUntil(2, [{ t: 1, piece: 'snare' }])
+    engine.finish()
+    engine.finish()
+    expect(engine.phase).toBe('ended')
+    expect(counts(engine.judgements)).toMatchObject({ perfect: 1, miss: 2 })
+    expect(ends).toHaveBeenCalledTimes(1)
+  })
+
+  it('setDynamicsBonus cambia el bonus para los golpes siguientes', () => {
+    const { engine, playUntil } = setup([
+      { ...note(1), dynamic: 'accent' },
+      { ...note(2), dynamic: 'accent' },
+    ])
+    playUntil(1.5, [{ t: 1, piece: 'snare', velocity: 120 }])
+    engine.setDynamicsBonus(true)
+    playUntil(2.5, [{ t: 2, piece: 'snare', velocity: 120 }])
+    expect(engine.judgements.map(j => ('dynamicBonus' in j ? j.dynamicBonus : null))).toEqual([
+      0, 10,
+    ])
+  })
+
   it('load reinicia la partida con otra dificultad', () => {
     const { engine } = setup([note(1)])
     const chart = makeChart([note(1)])

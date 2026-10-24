@@ -1,4 +1,4 @@
-import { parseSong } from '@/engine/SongParser'
+import { parseSong } from '@/chart/parseV1'
 import { PIECES } from '@/types'
 import type { ChartNote, ChartV2, Piece } from '@/types'
 

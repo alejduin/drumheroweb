@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { DIFFICULTIES } from '@/types'
-import { flattenNotes, parseSong } from '@/engine/SongParser'
+import { flattenNotes, parseSong } from '@/chart/parseV1'
 import { chartIssues, parseChart } from '@/chart/ChartParser'
 import { V1_DEFAULT_VELOCITY, convertV1ToV2, isChartV1 } from '@/chart/convertV1'
 import { timeToMeasureBeat } from '@/chart/grid'
-import { chartToSongData } from '@/chart/legacy'
 
 // Originales v1 (antes de la migración) y los charts que se sirven hoy
 const v1Files = import.meta.glob('/tests/fixtures/v1/*.json', { eager: true, import: 'default' })
@@ -93,35 +91,5 @@ describe('public/songs (migradas a v2)', () => {
     const served = songFiles[`/public/songs/${name}`]
     expect(served).toEqual(convertV1ToV2(raw, CREATED_AT))
     expect(parseChart(served).version).toBe(2)
-  })
-})
-
-describe('chartToSongData (puente al motor v1)', () => {
-  it.each(v1Songs)('$name: ida y vuelta conserva compases, beats y tiempos', ({ raw }) => {
-    const original = parseSong(raw)
-    const back = chartToSongData(convertV1ToV2(raw, CREATED_AT))
-    expect(back.measures).toHaveLength(original.measures.length)
-    const key = (n: { absoluteTimeMs: number; instrument: string }) =>
-      `${n.absoluteTimeMs}|${n.instrument}`
-    const sortNotes = <T extends { absoluteTimeMs: number; instrument: string }>(notes: T[]) =>
-      [...notes].sort((a, b) => key(a).localeCompare(key(b)))
-    for (const [i, measure] of original.measures.entries()) {
-      const got = sortNotes(back.measures[i].notes)
-      const want = sortNotes(measure.notes)
-      expect(got.map(n => n.instrument)).toEqual(want.map(n => n.instrument))
-      got.forEach((n, j) => {
-        expect(n.absoluteTimeMs).toBeCloseTo(want[j].absoluteTimeMs, 6)
-        expect(n.beat).toBe(want[j].beat)
-        expect(n.subdivision).toBeCloseTo(want[j].subdivision, 9)
-      })
-    }
-  })
-
-  it('usa las notas de la dificultad pedida', () => {
-    const chart = convertV1ToV2(v1Songs[0].raw, CREATED_AT)
-    for (const difficulty of DIFFICULTIES) {
-      const notes = chartToSongData(chart, difficulty).measures.flatMap(m => m.notes)
-      expect(notes).toHaveLength(chart.difficulties[difficulty].notes.length)
-    }
   })
 })

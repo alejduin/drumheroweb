@@ -1,90 +1,70 @@
 import { useEffect } from 'react'
-import { getStars } from '@/constants/game'
-import { useGameStore } from '@/store/legacy/gameStoreV1'
+import { starsFor } from '@/constants/scoring'
+import type { ChartV2 } from '@/types'
+import { formatPercent, formatScore, formatSignedMs } from '@/game/format'
+import type { ScoreResults } from '@/scoring/ScoreManager'
 import { useProgressStore } from '@/store/progressStore'
-import type { SongData } from '@/types'
+import { Button, Legend, StatTile, Stars } from '@/ui/primitives'
 
 interface ResultsScreenProps {
-  song: SongData
-  onPlayAgain: () => void
+  chart: ChartV2
+  results: ScoreResults
+  onRetry: () => void
   onMenu: () => void
 }
 
-export function ResultsScreen({ song, onPlayAgain, onMenu }: ResultsScreenProps) {
-  const { score, accuracy } = useGameStore()
+/** Resultados mínimos de la partida; B14 los completa según design/Results.dc.html. */
+export function ResultsScreen({ chart, results, onRetry, onMenu }: ResultsScreenProps) {
   const saveSongScore = useProgressStore(s => s.saveSongScore)
+  const { score, precision, bestCombo, meanDeltaMs, counts } = results
 
-  const total = Object.values(accuracy).reduce((a, b) => a + b, 0)
-  const hits = total - accuracy.miss
-  const hitRatio = total > 0 ? hits / total : 0
-  const stars = getStars(hitRatio)
-  const pct = total > 0 ? Math.round((hits / total) * 100) : 0
-
-  // Guardar score al montar
   useEffect(() => {
-    saveSongScore(song.id, score, accuracy)
-  }, [song.id, score, accuracy, saveSongScore])
+    saveSongScore(chart.id, score, precision)
+  }, [chart.id, score, precision, saveSongScore])
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-8 bg-gray-950 text-white select-none px-6">
-      {/* Título */}
-      <div className="text-center">
-        <div className="text-gray-400 text-sm uppercase tracking-widest mb-1">Resultado</div>
-        <h2 className="text-3xl font-bold">{song.title}</h2>
+    <main className="flex h-full flex-col items-center justify-center gap-8 bg-bg px-6 font-sans text-fg">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="text-[11px] tracking-[0.08em] text-muted uppercase">Resultado</span>
+        <h1 className="text-3xl font-extrabold">
+          {chart.title} — {chart.artist}
+        </h1>
+        <Stars value={starsFor(precision)} />
       </div>
 
-      {/* Estrellas */}
-      <div className="text-5xl tracking-wider">
-        {Array.from({ length: 5 }, (_, i) => (
-          <span key={i} className={i < stars ? 'text-yellow-400' : 'text-gray-700'}>
-            ★
-          </span>
-        ))}
+      <div className="grid w-full max-w-4xl grid-cols-4 gap-4">
+        <StatTile size="lg" label="Puntos" value={formatScore(score)} />
+        <StatTile size="lg" label="Precisión" value={formatPercent(precision)} />
+        <StatTile size="lg" label="Mejor combo" value={bestCombo} />
+        <StatTile
+          size="lg"
+          label="Timing"
+          value={meanDeltaMs === null ? '—' : formatSignedMs(meanDeltaMs)}
+          hint={
+            meanDeltaMs === null
+              ? undefined
+              : meanDeltaMs > 0
+                ? 'tarde en promedio'
+                : 'temprano en promedio'
+          }
+        />
       </div>
 
-      {/* Score */}
-      <div className="text-center">
-        <div className="text-6xl font-black text-white tabular-nums">{score.toLocaleString()}</div>
-        <div className="text-gray-400 text-sm mt-1">PUNTUACIÓN</div>
-      </div>
+      <Legend
+        items={[
+          { label: `Perfecto ${counts.perfect}`, color: 'perfect' },
+          { label: `Cerca ${counts.close}`, color: 'close' },
+          { label: `Fallo ${counts.miss}`, color: 'miss' },
+          { label: `Pad incorrecto ${counts.wrongPad}`, color: 'wrong' },
+        ]}
+      />
 
-      {/* Desglose de precisión */}
-      <div className="w-full max-w-sm grid grid-cols-4 gap-2 text-center">
-        <AccuracyCell label="PERFECT" count={accuracy.perfect} color="text-yellow-400" />
-        <AccuracyCell label="GREAT" count={accuracy.great} color="text-green-400" />
-        <AccuracyCell label="GOOD" count={accuracy.good} color="text-yellow-300" />
-        <AccuracyCell label="MISS" count={accuracy.miss} color="text-red-400" />
-      </div>
-
-      {/* Ratio de aciertos */}
-      <div className="text-gray-300 text-lg">
-        {hits} / {total} notas · <span className="font-bold text-white">{pct}%</span>
-      </div>
-
-      {/* Botones */}
       <div className="flex gap-4">
-        <button
-          onClick={onPlayAgain}
-          className="px-8 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold text-lg transition-colors"
-        >
-          Repetir
-        </button>
-        <button
-          onClick={onMenu}
-          className="px-8 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg transition-colors"
-        >
-          Menú
-        </button>
+        <Button variant="primary" onClick={onRetry}>
+          Reintentar
+        </Button>
+        <Button onClick={onMenu}>Elegir otra canción</Button>
       </div>
-    </div>
-  )
-}
-
-function AccuracyCell({ label, count, color }: { label: string; count: number; color: string }) {
-  return (
-    <div className="bg-gray-900 rounded-lg p-3">
-      <div className={`text-xl font-bold ${color}`}>{count}</div>
-      <div className="text-gray-500 text-xs mt-0.5">{label}</div>
-    </div>
+    </main>
   )
 }

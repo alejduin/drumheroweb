@@ -165,6 +165,19 @@ describe('agregados', () => {
     expect(sectionForMeasure(SECTIONS, 11)).toBeNull()
   })
 
+  it('precisión de sección en vivo: las secciones sin notas evaluadas quedan en null', () => {
+    const scores = manager(notes)
+    const log = play(notes, offsets)
+    // Solo la mitad de la partida: hasta el final del compás 2
+    for (const j of log.filter(j => j.t < GRID.downbeats[2])) scores.apply(j)
+    expect(scores.sectionStats().map(s => [s.name, s.precision])).toEqual([
+      ['Intro', 0.5],
+      ['Verso', null],
+    ])
+    for (const j of log.filter(j => j.t >= GRID.downbeats[2])) scores.apply(j)
+    expect(scores.sectionStats()).toEqual(scores.results().bySection)
+  })
+
   it('por pieza agrupada (rim → caja, pedal → hi-hat, tom3 → toms)', () => {
     const { byGroup } = results()
     expect(byGroup.snare.perfect + byGroup.snare.miss).toBe(8)

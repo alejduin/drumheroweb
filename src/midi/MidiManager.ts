@@ -1,5 +1,5 @@
-import { MIDI_DRUM_CHANNEL, MIN_VELOCITY } from '@/constants/game'
-import type { DrumInstrument, MidiHit } from '@/types'
+import { MIDI_DRUM_CHANNEL, MIN_VELOCITY } from '@/constants/midi'
+import type { MidiHit, Piece } from '@/types'
 import { DEFAULT_MIDI_MAP, resolveInstrument } from './midiMap'
 
 export type MidiConnectionState = 'disconnected' | 'requesting' | 'connected' | 'error'
@@ -34,7 +34,7 @@ type DevicesCallback = (devices: MidiDevice[]) => void
 class MidiManager {
   private access: MIDIAccess | null = null
   private selectedInput: MIDIInput | null = null
-  private midiMap: Record<number, DrumInstrument> = { ...DEFAULT_MIDI_MAP }
+  private midiMap: Record<number, Piece> = { ...DEFAULT_MIDI_MAP }
   private connectionState: MidiConnectionState = 'disconnected'
 
   private hitCallbacks = new Set<HitCallback>()
@@ -110,16 +110,16 @@ class MidiManager {
 
   // ─── Mapa MIDI ──────────────────────────────────────────────────────────────
 
-  setMidiMap(map: Record<number, DrumInstrument>): void {
+  setMidiMap(map: Record<number, Piece>): void {
     this.midiMap = { ...map }
   }
 
-  getMidiMap(): Record<number, DrumInstrument> {
+  getMidiMap(): Record<number, Piece> {
     return { ...this.midiMap }
   }
 
   /** Asigna una nota MIDI a un instrumento (usado en calibración) */
-  mapNote(midiNote: number, instrument: DrumInstrument): void {
+  mapNote(midiNote: number, instrument: Piece): void {
     this.midiMap[midiNote] = instrument
   }
 
@@ -204,7 +204,7 @@ export function parseNoteOn(event: MIDIMessageEvent): MidiNoteOn | null {
  */
 export function parseMidiMessage(
   event: MIDIMessageEvent,
-  midiMap: Record<number, DrumInstrument> = DEFAULT_MIDI_MAP,
+  midiMap: Record<number, Piece> = DEFAULT_MIDI_MAP,
 ): MidiHit | null {
   const data = event.data
   if (!data || data.length < 3) return null

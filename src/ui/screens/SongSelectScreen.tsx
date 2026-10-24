@@ -1,39 +1,35 @@
-import { useState } from 'react'
-import { chartToSongData } from '@/chart/legacy'
+import { useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
+import type { SongBundle } from '@/game/GameSession'
+import { builtinBundle, localAnalysisBundle } from '@/songs/songBundle'
 import { loadChart } from '@/songs/songLoader'
 import { SONG_LIBRARY } from '@/songs/songLibrary'
 import type { SongMeta } from '@/songs/songLibrary'
 import { useProgressStore } from '@/store/progressStore'
-import type { SongData } from '@/types'
+import { Button, Panel, Stars } from '@/ui/primitives'
 
-const DIFFICULTY_LABEL: Record<SongMeta['difficulty'], string> = {
+const LEVEL_LABEL: Record<SongMeta['difficulty'], string> = {
   beginner: 'Principiante',
   intermediate: 'Intermedio',
   advanced: 'Avanzado',
 }
 
-const DIFFICULTY_COLOR: Record<SongMeta['difficulty'], string> = {
-  beginner: 'text-green-400',
-  intermediate: 'text-yellow-400',
-  advanced: 'text-red-400',
-}
-
 interface SongSelectScreenProps {
-  onSongReady: (song: SongData) => void
+  onSongReady: (bundle: SongBundle) => void
   onBack: () => void
 }
 
 export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps) {
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const getBestScore = useProgressStore(s => s.getBestScore)
+  const bestScores = useProgressStore(s => s.bestScores)
+  const fileInput = useRef<HTMLInputElement>(null)
 
-  async function handleSelect(meta: SongMeta) {
-    setLoading(meta.id)
+  async function run(key: string, load: () => Promise<SongBundle>) {
+    setLoading(key)
     setError(null)
     try {
-      const chart = await loadChart(meta.id)
-      onSongReady(chartToSongData(chart))
+      onSongReady(await load())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar la canción')
     } finally {
@@ -41,69 +37,89 @@ export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps)
     }
   }
 
-  return (
-    <div className="flex flex-col h-full bg-gray-950 text-white select-none">
-      {/* Header */}
-      <div className="flex items-center gap-4 p-6 border-b border-gray-800">
-        <button
-          onClick={onBack}
-          className="text-gray-400 hover:text-white transition-colors text-sm"
-        >
-          ← Volver
-        </button>
-        <h2 className="text-2xl font-bold">Seleccionar canción</h2>
-      </div>
+  function onFiles(e: ChangeEvent<HTMLInputElement>) {
+    const files = [...(e.target.files ?? [])]
+    e.target.value = '' // permite volver a elegir los mismos archivos
+    if (files.length > 0) void run('local', () => localAnalysisBundle(files))
+  }
 
-      {/* Lista */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-3">
+  return (
+    <main className="flex h-full flex-col bg-bg font-sans text-fg">
+      <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border bg-surface-header px-6">
+        <Button size="sm" onClick={onBack}>
+          ← Volver
+        </Button>
+        <h1 className="text-[17px] font-bold">Elegir canción</h1>
+      </header>
+
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto p-6">
         {error && (
-          <div className="p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">
+          <p
+            role="alert"
+            className="rounded-md border border-miss/40 bg-miss/10 p-3 text-sm text-fg-2"
+          >
             {error}
-          </div>
+          </p>
         )}
 
-        {SONG_LIBRARY.map(meta => {
-          const best = getBestScore(meta.id)
-          const isLoading = loading === meta.id
-
-          return (
-            <button
-              key={meta.id}
-              onClick={() => handleSelect(meta)}
-              disabled={isLoading}
-              className="flex items-center justify-between p-5 bg-gray-900 hover:bg-gray-800 active:bg-gray-700 rounded-xl transition-colors text-left disabled:opacity-50"
-            >
-              <div>
-                <div className="font-bold text-lg">{meta.title}</div>
-                <div className="text-sm text-gray-400 mt-0.5">
-                  {meta.artist} · {meta.bpm} BPM
+        <Panel title="Incluidas" aside="sin audio: suena una pista silenciosa">
+          {SONG_LIBRARY.map(meta => {
+            const best = bestScores[meta.id]
+            return (
+              <button
+                key={meta.id}
+                type="button"
+                disabled={loading !== null}
+                onClick={() =>
+                  void run(meta.id, async () => builtinBundle(await loadChart(meta.id)))
+                }
+                className="flex cursor-pointer items-center justify-between rounded-md bg-surface-2 p-4 text-left transition hover:bg-track disabled:cursor-wait disabled:opacity-50"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold">{meta.title}</span>
+                  <span className="text-xs text-muted">
+                    {meta.artist} · {meta.bpm} BPM · {LEVEL_LABEL[meta.difficulty]}
+                  </span>
                 </div>
-                <div className={`text-xs mt-1 font-medium ${DIFFICULTY_COLOR[meta.difficulty]}`}>
-                  {DIFFICULTY_LABEL[meta.difficulty]}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-1 min-w-[80px]">
-                {isLoading ? (
-                  <span className="text-purple-400 text-sm">Cargando...</span>
+                {loading === meta.id ? (
+                  <span className="text-sm text-accent">Cargando…</span>
                 ) : best ? (
-                  <>
-                    <span className="text-yellow-400 font-bold">
-                      {'★'.repeat(best.stars)}
-                      {'☆'.repeat(5 - best.stars)}
+                  <div className="flex flex-col items-end gap-1">
+                    <Stars value={best.stars} size={16} />
+                    <span className="font-mono text-xs text-fg-2">
+                      {best.score.toLocaleString('en-US')}
                     </span>
-                    <span className="text-gray-300 text-sm font-mono">
-                      {best.score.toLocaleString()}
-                    </span>
-                  </>
+                  </div>
                 ) : (
-                  <span className="text-gray-600 text-sm">Sin jugar</span>
+                  <span className="text-xs text-faint">Sin jugar</span>
                 )}
-              </div>
-            </button>
-          )
-        })}
+              </button>
+            )
+          })}
+        </Panel>
+
+        <Panel title="Análisis local" aside="hasta que llegue la biblioteca">
+          <p className="text-xs text-fg-2">
+            Elige los archivos de una carpeta de <code className="font-mono">worker/poc/out/…</code>
+            : chart.json, drums.ogg, backing.ogg y peaks.json (y el MP3 original, opcional).
+          </p>
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            accept=".json,audio/*,.ogg"
+            className="hidden"
+            onChange={onFiles}
+          />
+          <Button
+            variant="primary"
+            disabled={loading !== null}
+            onClick={() => fileInput.current?.click()}
+          >
+            {loading === 'local' ? 'Cargando…' : 'Abrir archivos del análisis'}
+          </Button>
+        </Panel>
       </div>
-    </div>
+    </main>
   )
 }

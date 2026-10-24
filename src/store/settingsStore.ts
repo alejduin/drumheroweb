@@ -1,43 +1,88 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { DEFAULT_MIX, clampLevel } from '@/audio/Mixer'
+import type { MixChannel, MixLevels } from '@/audio/Mixer'
+import { DEFAULT_LEVEL } from '@/constants/scoring'
+import type { Level, Piece, ScoreView } from '@/types'
 import { DEFAULT_MIDI_MAP, migrateMidiMap } from '@/midi/midiMap'
-import type { DrumInstrument, UserSettings } from '@/types'
+
+export interface UserSettings {
+  midiDeviceId: string | null
+  midiLatencyOffsetMs: number
+  midiMap: Record<number, Piece> // nota MIDI → pieza
+  /** Ventanas de acierto (PLAN_V2 D1); la dificultad se elige por partida. */
+  level: Level
+  view: ScoreView
+  scrollSpeed: number // multiplicador sobre la velocidad base
+  dynamicsBonus: boolean
+  mix: MixLevels
+}
 
 interface SettingsStore extends UserSettings {
   setMidiDevice(id: string | null): void
   setLatencyOffset(ms: number): void
-  setMidiMap(map: Record<number, DrumInstrument>): void
-  setMetronomeVolume(v: number): void
-  setSampleVolume(v: number): void
+  setMidiMap(map: Record<number, Piece>): void
+  setLevel(level: Level): void
+  setView(view: ScoreView): void
   setScrollSpeed(v: number): void
+  setDynamicsBonus(on: boolean): void
+  setMixLevel(channel: MixChannel, level: number): void
+  setMix(mix: MixLevels): void
+}
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  midiDeviceId: null,
+  midiLatencyOffsetMs: 0,
+  midiMap: { ...DEFAULT_MIDI_MAP },
+  level: DEFAULT_LEVEL,
+  view: 'staff',
+  scrollSpeed: 1.0,
+  dynamicsBonus: true,
+  mix: { ...DEFAULT_MIX },
+}
+
+/** Ajustes guardados por una versión anterior → versión actual. */
+export function migrateSettings(persisted: unknown, version: number): Partial<UserSettings> {
+  const state = { ...(persisted as Record<string, unknown>) }
+  // v1: mapa con tom3 y sin ride_edge (PLAN_V2 D5)
+  if (version < 1 && state.midiMap) {
+    state.midiMap = migrateMidiMap(state.midiMap as Record<number, string>)
+  }
+  // v2: volúmenes sueltos de V1 → mezclador por canal
+  if (version < 2) {
+    const metronome = state.metronomeVolume
+    const samples = state.sampleVolume
+    state.mix = {
+      ...DEFAULT_MIX,
+      ...(typeof metronome === 'number' ? { metronome: clampLevel(metronome) } : {}),
+      ...(typeof samples === 'number' ? { samples: clampLevel(samples) } : {}),
+    }
+    delete state.metronomeVolume
+    delete state.sampleVolume
+  }
+  return state as Partial<UserSettings>
 }
 
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     set => ({
-      midiDeviceId: null,
-      midiLatencyOffsetMs: 0,
-      midiMap: { ...DEFAULT_MIDI_MAP },
-      metronomeVolume: 0.7,
-      sampleVolume: 1.0,
-      scrollSpeed: 1.0,
+      ...DEFAULT_SETTINGS,
 
       setMidiDevice: id => set({ midiDeviceId: id }),
       setLatencyOffset: ms => set({ midiLatencyOffsetMs: ms }),
       setMidiMap: map => set({ midiMap: map }),
-      setMetronomeVolume: v => set({ metronomeVolume: v }),
-      setSampleVolume: v => set({ sampleVolume: v }),
+      setLevel: level => set({ level }),
+      setView: view => set({ view }),
       setScrollSpeed: v => set({ scrollSpeed: v }),
+      setDynamicsBonus: on => set({ dynamicsBonus: on }),
+      setMixLevel: (channel, level) =>
+        set(state => ({ mix: { ...state.mix, [channel]: clampLevel(level) } })),
+      setMix: mix => set({ mix: { ...mix } }),
     }),
     {
       name: 'drumhero-settings',
-      // v1: mapa con tom3 y sin ride_edge (PLAN_V2 D5)
-      version: 1,
-      migrate: (persisted, version) => {
-        const state = persisted as Partial<UserSettings> & { midiMap?: Record<number, string> }
-        if (version < 1 && state.midiMap) state.midiMap = migrateMidiMap(state.midiMap)
-        return state as SettingsStore
-      },
+      version: 2,
+      migrate: (persisted, version) => migrateSettings(persisted, version) as SettingsStore,
     },
   ),
 )

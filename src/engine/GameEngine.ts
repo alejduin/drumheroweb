@@ -180,14 +180,28 @@ export class GameEngine {
     }
 
     if (now >= this.chart.durationS) {
-      this.expireUntil(Infinity)
-      this.currentPhase = 'ended'
-      this.stop()
-      this.emit(this.endListeners, this.log)
+      this.finish()
       return
     }
 
     this.expireUntil(now - MISS_GRACE_S)
+  }
+
+  /**
+   * Termina la partida: las notas pendientes son Fallo. Lo llama tick() al llegar a
+   * durationS, o quien reproduce el audio si este acaba antes que el chart.
+   */
+  finish(): void {
+    if (!this.evaluator || this.currentPhase === 'ended') return
+    this.expireUntil(Infinity)
+    this.stop()
+    this.currentPhase = 'ended'
+    this.emit(this.endListeners, this.log)
+  }
+
+  /** Puntos por dinámica para los golpes siguientes (Configuración, en plena partida). */
+  setDynamicsBonus(on: boolean): void {
+    this.evaluator?.setDynamicsBonus(on)
   }
 
   // ─── Suscripciones ───────────────────────────────────────────────────────────

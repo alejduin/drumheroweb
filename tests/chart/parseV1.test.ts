@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { flattenNotes, parseSong, positionToMs } from '@/engine/SongParser'
+import { flattenNotes, parseSong, positionToMs } from '@/chart/parseV1'
 
 // ─── positionToMs ─────────────────────────────────────────────────────────────
 

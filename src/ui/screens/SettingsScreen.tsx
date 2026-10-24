@@ -1,4 +1,13 @@
+import { LEVEL_WINDOWS } from '@/constants/scoring'
+import type { Level } from '@/types'
 import { useSettingsStore } from '@/store/settingsStore'
+import { SegmentedControl } from '@/ui/primitives'
+
+const LEVEL_OPTIONS: { value: Level; label: string }[] = [
+  { value: 'beginner', label: 'Principiante' },
+  { value: 'intermediate', label: 'Intermedio' },
+  { value: 'expert', label: 'Experto' },
+]
 
 interface SettingsScreenProps {
   onBack: () => void
@@ -7,14 +16,15 @@ interface SettingsScreenProps {
 export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const {
     midiLatencyOffsetMs,
-    metronomeVolume,
-    sampleVolume,
+    level,
+    mix,
     scrollSpeed,
     setLatencyOffset,
-    setMetronomeVolume,
-    setSampleVolume,
+    setLevel,
+    setMixLevel,
     setScrollSpeed,
   } = useSettingsStore()
+  const windows = LEVEL_WINDOWS[level]
 
   return (
     <div className="flex flex-col h-full bg-gray-950 text-white select-none">
@@ -55,38 +65,42 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           </SettingRow>
         </section>
 
+        {/* Nivel */}
+        <section>
+          <h3 className="text-gray-400 text-xs uppercase tracking-widest mb-4">Nivel</h3>
+          <SettingRow
+            label="Ventanas de acierto"
+            hint="Qué tan exacto tienes que ser. La dificultad (qué notas hay) se elige en cada partida."
+            value={`±${windows.perfectMs} / ±${windows.closeMs} ms`}
+          >
+            <SegmentedControl
+              aria-label="Nivel"
+              options={LEVEL_OPTIONS}
+              value={level}
+              onChange={setLevel}
+              fullWidth
+            />
+          </SettingRow>
+        </section>
+
         {/* Audio */}
         <section>
           <h3 className="text-gray-400 text-xs uppercase tracking-widest mb-4">Audio</h3>
-          <div className="flex flex-col gap-6">
-            <SettingRow
-              label="Volumen metrónomo"
-              hint="Pon a 0 para desactivar el metrónomo durante el juego."
-              value={`${Math.round(metronomeVolume * 100)}%`}
-            >
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={metronomeVolume}
-                onChange={e => setMetronomeVolume(Number(e.target.value))}
-                className="w-full accent-purple-500"
-              />
-            </SettingRow>
-
-            <SettingRow label="Volumen samples" value={`${Math.round(sampleVolume * 100)}%`}>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={sampleVolume}
-                onChange={e => setSampleVolume(Number(e.target.value))}
-                className="w-full accent-purple-500"
-              />
-            </SettingRow>
-          </div>
+          <SettingRow
+            label="Volumen metrónomo"
+            hint="También se ajusta en el mezclador de la partida."
+            value={`${Math.round(mix.metronome * 100)}%`}
+          >
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={mix.metronome}
+              onChange={e => setMixLevel('metronome', Number(e.target.value))}
+              className="w-full accent-purple-500"
+            />
+          </SettingRow>
         </section>
 
         {/* Visualización */}

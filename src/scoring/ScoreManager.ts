@@ -174,7 +174,19 @@ export class ScoreManager {
       .sort(([a], [b]) => a - b)
       .map(([measure, tally]) => ({ measure, tally: { ...tally }, precision: precisionOf(tally) }))
 
-    const bySection = this.ctx.sections.map(section => {
+    return {
+      ...this.snapshot(),
+      bestComboRun: this.best ? { ...this.best } : null,
+      meanDeltaMs: mean(this.deltas),
+      byGroup,
+      byMeasure,
+      bySection: this.sectionStats(),
+    }
+  }
+
+  /** Precisión por sección (panel Secciones en vivo y Resultados). */
+  sectionStats(): SectionStats[] {
+    return this.ctx.sections.map(section => {
       const tally = emptyTally()
       for (const [measure, t] of this.byMeasure) {
         if (measure < section.startMeasure || measure > section.endMeasure) continue
@@ -184,15 +196,6 @@ export class ScoreManager {
       }
       return { ...section, tally, precision: precisionOf(tally) }
     })
-
-    return {
-      ...this.snapshot(),
-      bestComboRun: this.best ? { ...this.best } : null,
-      meanDeltaMs: mean(this.deltas),
-      byGroup,
-      byMeasure,
-      bySection,
-    }
   }
 
   private count(

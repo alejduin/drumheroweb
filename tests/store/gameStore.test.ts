@@ -7,6 +7,7 @@ import {
   selectCombo,
   selectResults,
   selectScore,
+  selectSections,
   useGameStore,
 } from '@/store/gameStore'
 import type { JudgementSource } from '@/store/gameStore'
@@ -70,6 +71,15 @@ describe('gameStore', () => {
     expect(selectScore(state)).toBe(200)
     expect(selectCombo(state)).toBe(2)
     expect(state.hud.last).toEqual(perfect(1))
+  })
+
+  it('publica la precisión por sección con cada juicio', () => {
+    const fake = fakeEngine()
+    const sections = [{ name: 'Todo', startMeasure: 1, endMeasure: 1 }]
+    bindScoring(fake.engine, new ScoreManager({ notes, grid, sections }))
+    expect(selectSections(useGameStore.getState())[0].precision).toBeNull()
+    fake.judge(perfect(0))
+    expect(selectSections(useGameStore.getState())[0].precision).toBe(1)
   })
 
   it('un seek reconstruye el HUD con los juicios vigentes', () => {

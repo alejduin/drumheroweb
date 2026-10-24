@@ -32,10 +32,11 @@ export function drawLaneBackground(
 
   ctx.fillStyle = THEME_COLORS.faint
   ctx.font = `500 ${11 * s}px ${FONT_MONO}`
+  // Número de compás encima de los carriles: debajo va la barra DOM (medidor y leyenda)
   ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
+  ctx.textBaseline = 'bottom'
   for (const bar of frame.bars) {
-    ctx.fillText(String(bar.measure), bar.x + 4 * s, geometry.bottom + 3 * s)
+    ctx.fillText(String(bar.measure), bar.x + 4 * s, geometry.top - 3 * s)
   }
 }
 

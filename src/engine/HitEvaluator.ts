@@ -84,7 +84,7 @@ export class HitEvaluator {
   readonly windows: HitWindows
   private readonly points: JudgementPoints
   private readonly latencyS: number
-  private readonly dynamicsBonus: boolean
+  private dynamicsBonus: boolean
   private readonly notes: readonly ChartNote[]
   private readonly allIndices: readonly number[]
   private readonly byPiece = new Map<Piece, number[]>()
@@ -104,6 +104,11 @@ export class HitEvaluator {
       if (list) list.push(i)
       else this.byPiece.set(note.piece, [i])
     })
+  }
+
+  /** Activa o quita los puntos por dinámica para los golpes siguientes. */
+  setDynamicsBonus(on: boolean): void {
+    this.dynamicsBonus = on
   }
 
   judge(hit: PlayedHit): HitJudgement {
