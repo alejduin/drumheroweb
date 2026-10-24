@@ -11,6 +11,7 @@ docker compose build poc                       # primera vez: ~10-20 min
 docker compose run --rm poc health             # carga los 3 modelos (descarga pesos la 1.ª vez)
 docker compose run --rm poc analyze poc/songs  # todas las canciones → poc/out/<id>/
 docker compose run --rm poc analyze "poc/songs/Mi canción.mp3" --triplets --tolerance-ms 35
+docker compose run --rm poc evaluate poc/songs # chart vs referencia (poc/references/<id>.json)
 docker compose run --rm --entrypoint pytest poc -m "not models"   # tests rápidos
 docker compose run --rm --entrypoint pytest poc                   # todos (incluye modelos)
 docker compose run --rm --entrypoint ruff poc check . && docker compose run --rm --entrypoint ruff poc format --check .
@@ -45,6 +46,18 @@ docker compose run --rm --entrypoint ruff poc check . && docker compose run --rm
 
 Mapeo ADTOF → pieza: kick → `kick`, snare → `snare`, tom → `tom1`, hihat → `hihat_closed`,
 cymbal → `crash`. Las demás piezas se asignan en el editor (Fase C).
+
+## Evaluación (`evaluate`)
+
+Compara `poc/out/<id>/chart.json` con `poc/references/<id>.json` (grabada en `/dev/record-reference`):
+
+- Grupos: kick · snare (+ aro) · hihat (cerrado + abierto; el de pie solo con `--include-pedal`) ·
+  tom (1–3) · cymbal (crash + ride).
+- Estima el desfase global (±300 ms) y empareja con `mir_eval` a ±50 ms, solo dentro de los tramos grabados.
+- Por canción: P / R / F1 por grupo, matriz de confusión (`—` = sin pareja), error de tiempo y
+  precisión de notas con confianza ≥ / < 0.6. Global: micro y F1 medio por canción, con el criterio
+  de A6 (kick, snare, hihat > 85 %). Guarda `poc/out/<id>/eval.json`.
+- `--raw` evalúa los onsets sin cuantizar (`tRaw`) para medir el efecto de la cuantización.
 
 ## Licencias de modelos
 
