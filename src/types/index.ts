@@ -100,3 +100,8 @@ export interface UserSettings {
   sampleVolume: number // 0-1
   scrollSpeed: number // multiplicador sobre la velocidad base
 }
+
+// ─── Chart v2 ─────────────────────────────────────────────────────────────────
+
+export * from './chart'
+export * from './api'

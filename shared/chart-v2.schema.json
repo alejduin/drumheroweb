@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drumhero.ai/schemas/chart-v2.schema.json",
+  "title": "DrumHero AI chart v2",
+  "description": "Partitura de batería generada por IA o a mano. Invariantes no expresables aquí (las validan validateChartInvariants en TS y chart.py en el worker): notas de cada dificultad ordenadas por t; t <= durationS; grid.beats estrictamente ascendente; cada downbeat pertenece a grid.beats; endMeasure >= startMeasure; secciones sin solaparse.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "title",
+    "artist",
+    "bpm",
+    "timeSignature",
+    "durationS",
+    "audioUrl",
+    "stems",
+    "audioSha256",
+    "youtubeUrl",
+    "youtubeOffsetMs",
+    "grid",
+    "difficulties",
+    "sections",
+    "source"
+  ],
+  "properties": {
+    "version": { "const": 2 },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "artist": { "type": "string", "maxLength": 200 },
+    "bpm": {
+      "description": "Tempo medio; la fuente de verdad del tiempo es grid.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 400
+    },
+    "timeSignature": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 1, "maximum": 32 },
+        { "enum": [1, 2, 4, 8, 16, 32] }
+      ],
+      "items": false,
+      "minItems": 2
+    },
+    "durationS": { "type": "number", "exclusiveMinimum": 0 },
+    "audioUrl": {
+      "description": "storage://…, idb://… o /ruta pública. null si el audio aún no está disponible.",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "stems": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["drums", "backing"],
+          "properties": {
+            "drums": { "type": "string", "minLength": 1 },
+            "backing": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "audioSha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "youtubeUrl": { "type": ["string", "null"], "minLength": 1 },
+    "youtubeOffsetMs": { "type": "number", "minimum": -10000, "maximum": 10000 },
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["beats", "downbeats"],
+      "properties": {
+        "beats": {
+          "description": "Tiempo de cada beat en segundos desde el inicio del audio.",
+          "type": "array",
+          "items": { "type": "number", "minimum": 0 },
+          "minItems": 1
+        },
+        "downbeats": {
+          "description": "Subconjunto de beats que inician compás. El primero es el compás 1.",
+          "type": "array",
+          "items": { "type": "number", "minimum": 0 },
+          "minItems": 1
+        }
+      }
+    },
+    "difficulties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basic", "intermediate", "full"],
+      "properties": {
+        "basic": { "$ref": "#/$defs/noteTrack" },
+        "intermediate": { "$ref": "#/$defs/noteTrack" },
+        "full": { "$ref": "#/$defs/noteTrack" }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "startMeasure", "endMeasure"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "startMeasure": { "type": "integer", "minimum": 1 },
+          "endMeasure": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "createdAt"],
+      "properties": {
+        "kind": { "enum": ["ai", "manual", "builtin"] },
+        "model": {
+          "description": "Modelos y versiones usados, p. ej. \"htdemucs+adtof-frame_rnn+beat_this-final0\".",
+          "type": "string"
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "piece": {
+      "enum": [
+        "kick",
+        "snare",
+        "snare_rim",
+        "hihat_closed",
+        "hihat_open",
+        "hihat_pedal",
+        "tom1",
+        "tom2",
+        "tom3",
+        "crash",
+        "ride"
+      ]
+    },
+    "note": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t", "piece", "velocity", "confidence"],
+      "properties": {
+        "t": {
+          "description": "Segundos desde el inicio del audio, cuantizado.",
+          "type": "number",
+          "minimum": 0
+        },
+        "piece": { "$ref": "#/$defs/piece" },
+        "velocity": { "type": "integer", "minimum": 1, "maximum": 127 },
+        "confidence": {
+          "description": "< 0.6 = por revisar.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dynamic": { "enum": ["ghost", "normal", "accent"] },
+        "tRaw": {
+          "description": "Onset sin cuantizar, para recuantizar.",
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "noteTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["notes"],
+      "properties": {
+        "notes": { "type": "array", "items": { "$ref": "#/$defs/note" } }
+      }
+    }
+  }
+}

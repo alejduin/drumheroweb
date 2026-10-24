@@ -1,0 +1,381 @@
+{
+  "version": 2,
+  "id": "ejemplo-groove-001",
+  "title": "Groove de ejemplo",
+  "artist": "DrumHero AI",
+  "bpm": 104,
+  "timeSignature": [4, 4],
+  "durationS": 5.0,
+  "audioUrl": "storage://audio/ejemplo.mp3",
+  "stems": {
+    "drums": "storage://stems/ejemplo/drums.ogg",
+    "backing": "storage://stems/ejemplo/backing.ogg"
+  },
+  "audioSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "youtubeUrl": null,
+  "youtubeOffsetMs": 0,
+  "grid": {
+    "beats": [0.12, 0.6969, 1.2738, 1.8508, 2.4277, 3.0046, 3.5815, 4.1585, 4.7354],
+    "downbeats": [0.12, 2.4277, 4.7354]
+  },
+  "difficulties": {
+    "basic": {
+      "notes": [
+        {
+          "t": 0.12,
+          "piece": "kick",
+          "velocity": 96,
+          "confidence": 0.93
+        }
+      ]
+    },
+    "intermediate": {
+      "notes": [
+        {
+          "t": 0.12,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 0.12,
+          "piece": "kick",
+          "velocity": 96,
+          "confidence": 0.93
+        },
+        {
+          "t": 0.4085,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 0.6969,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 0.6969,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "normal"
+        },
+        {
+          "t": 0.9854,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.2738,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.5623,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.5623,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 0.81,
+          "tRaw": 1.5733
+        },
+        {
+          "t": 1.8508,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.8508,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "accent"
+        },
+        {
+          "t": 2.1392,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 2.4277,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 2.4277,
+          "piece": "kick",
+          "velocity": 96,
+          "confidence": 0.93
+        },
+        {
+          "t": 2.7162,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.0046,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.0046,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "normal"
+        },
+        {
+          "t": 3.2931,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.5815,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.87,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 4.1585,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 4.1585,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "normal"
+        },
+        {
+          "t": 4.4469,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 4.7354,
+          "piece": "crash",
+          "velocity": 118,
+          "confidence": 0.9
+        },
+        {
+          "t": 4.7354,
+          "piece": "kick",
+          "velocity": 100,
+          "confidence": 0.94
+        }
+      ]
+    },
+    "full": {
+      "notes": [
+        {
+          "t": 0.12,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 0.12,
+          "piece": "kick",
+          "velocity": 96,
+          "confidence": 0.93
+        },
+        {
+          "t": 0.4085,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 0.6969,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 0.6969,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "normal"
+        },
+        {
+          "t": 0.9854,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.2738,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.5623,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.5623,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 0.81,
+          "tRaw": 1.5733
+        },
+        {
+          "t": 1.8508,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 1.8508,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "accent"
+        },
+        {
+          "t": 2.1392,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 2.4277,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 2.4277,
+          "piece": "kick",
+          "velocity": 96,
+          "confidence": 0.93
+        },
+        {
+          "t": 2.7162,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.0046,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.0046,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "normal"
+        },
+        {
+          "t": 3.2931,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.5815,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 3.87,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 4.0142,
+          "piece": "snare",
+          "velocity": 38,
+          "confidence": 0.62,
+          "dynamic": "ghost"
+        },
+        {
+          "t": 4.1585,
+          "piece": "hihat_closed",
+          "velocity": 84,
+          "confidence": 0.88
+        },
+        {
+          "t": 4.1585,
+          "piece": "snare",
+          "velocity": 110,
+          "confidence": 0.95,
+          "dynamic": "normal"
+        },
+        {
+          "t": 4.4469,
+          "piece": "hihat_closed",
+          "velocity": 72,
+          "confidence": 0.88
+        },
+        {
+          "t": 4.4469,
+          "piece": "tom1",
+          "velocity": 88,
+          "confidence": 0.51
+        },
+        {
+          "t": 4.7354,
+          "piece": "crash",
+          "velocity": 118,
+          "confidence": 0.9
+        },
+        {
+          "t": 4.7354,
+          "piece": "kick",
+          "velocity": 100,
+          "confidence": 0.94
+        }
+      ]
+    }
+  },
+  "sections": [
+    {
+      "name": "Groove",
+      "startMeasure": 1,
+      "endMeasure": 2
+    },
+    {
+      "name": "Final",
+      "startMeasure": 3,
+      "endMeasure": 3
+    }
+  ],
+  "source": {
+    "kind": "ai",
+    "model": "htdemucs+adtof+beat_this",
+    "createdAt": "2026-10-23T12:00:00Z"
+  }
+}

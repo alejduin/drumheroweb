@@ -1,0 +1,255 @@
+openapi: 3.1.0
+info:
+  title: DrumHero AI — worker de análisis
+  version: 1.0.0
+  description: |
+    Aísla la batería de un audio subido por el usuario (Demucs), detecta golpes por pieza (ADTOF),
+    estima la rejilla (beat_this), cuantiza y devuelve un chart v2 (dificultad `full`).
+    Las dificultades `basic` e `intermediate` las genera el cliente (PLAN_V2 D13); el worker
+    las entrega vacías y reporta la etapa `difficulties` como `done`.
+
+    Caché por sha256 del audio: si ya se analizó, POST /v1/jobs responde 200 con `cached: true`.
+
+    Autenticación: `Authorization: Bearer <JWT de Supabase>`. En `STORAGE_BACKEND=local` está desactivada.
+    Espejo TS: src/types/api.ts (hay un test de paridad de enums).
+servers:
+  - url: http://localhost:8000
+    description: Desarrollo local (docker compose up worker)
+security:
+  - bearerAuth: []
+paths:
+  /v1/health:
+    get:
+      summary: Estado del worker y modelos cargados
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthResponse' }
+  /v1/jobs:
+    post:
+      summary: Crear un análisis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateJobRequest' }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  {
+                    type: string,
+                    format: binary,
+                    description: 'MP3, WAV o M4A; máx. 10 min y 50 MB',
+                  }
+                title: { type: string }
+                artist: { type: string }
+      responses:
+        '200':
+          description: Ya analizado (caché por sha256)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreateJobResponse' }
+        '202':
+          description: Trabajo encolado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreateJobResponse' }
+        '401': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /v1/jobs/{jobId}:
+    parameters:
+      - $ref: '#/components/parameters/JobId'
+    get:
+      summary: Estado y progreso del trabajo
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Cancelar (si está en cola o en proceso)
+      responses:
+        '204': { description: Cancelado }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/jobs/{jobId}/result:
+    parameters:
+      - $ref: '#/components/parameters/JobId'
+    get:
+      summary: Resultado del análisis (solo con status = done)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobResult' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: El trabajo aún no terminó (código NOT_READY)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /v1/files/{path}:
+    get:
+      summary: Archivos generados (stems, peaks). Solo en STORAGE_BACKEND=local
+      security: []
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Archivo
+          content:
+            audio/ogg: {}
+            application/json: {}
+        '404': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    JobStatus:
+      enum:
+        [queued, separating, transcribing, tempo, quantizing, finalizing, done, failed, canceled]
+    AnalysisStageId:
+      enum: [separate, transcribe, tempo, quantize, difficulties]
+    StageState:
+      enum: [pending, running, done, failed]
+    ErrorCode:
+      enum:
+        - UNSUPPORTED_FORMAT
+        - TOO_LONG
+        - TOO_LARGE
+        - DECODE_FAILED
+        - SEPARATION_FAILED
+        - TRANSCRIPTION_FAILED
+        - NO_DRUMS_DETECTED
+        - NOT_READY
+        - NOT_FOUND
+        - UNAUTHORIZED
+        - INTERNAL
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code: { $ref: '#/components/schemas/ErrorCode' }
+        message: { type: string }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: { $ref: '#/components/schemas/ApiError' }
+    AnalysisStage:
+      type: object
+      required: [id, label, state, progress]
+      properties:
+        id: { $ref: '#/components/schemas/AnalysisStageId' }
+        label: { type: string, examples: ['Separar la batería del resto'] }
+        state: { $ref: '#/components/schemas/StageState' }
+        progress: { type: number, minimum: 0, maximum: 1 }
+    JobSummary:
+      type: object
+      required: [bpm, timeSignature, durationS, pieces, lowConfidenceCount, lowConfidenceByPiece]
+      properties:
+        bpm: { type: number }
+        timeSignature: { type: array, items: { type: integer }, minItems: 2, maxItems: 2 }
+        durationS: { type: number }
+        pieces:
+          type: array
+          items: { $ref: './chart-v2.schema.json#/$defs/piece' }
+        lowConfidenceCount: { type: integer, minimum: 0 }
+        lowConfidenceByPiece:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+    Job:
+      type: object
+      required: [jobId, status, cached, stages, summary, error, createdAt, updatedAt]
+      properties:
+        jobId: { type: string }
+        status: { $ref: '#/components/schemas/JobStatus' }
+        cached: { type: boolean }
+        stages:
+          type: array
+          items: { $ref: '#/components/schemas/AnalysisStage' }
+        summary:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JobSummary'
+        error:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ApiError'
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateJobRequest:
+      type: object
+      required: [audioPath, sha256, title, artist, durationS]
+      properties:
+        audioPath: { type: string, description: 'Ruta en el bucket privado audio/{user_id}/…' }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        title: { type: string }
+        artist: { type: string }
+        durationS: { type: number, exclusiveMinimum: 0, maximum: 600 }
+    CreateJobResponse:
+      type: object
+      required: [jobId, status, cached]
+      properties:
+        jobId: { type: string }
+        status: { $ref: '#/components/schemas/JobStatus' }
+        cached: { type: boolean }
+    WaveformPeaks:
+      type: object
+      required: [samplesPerPeak, sampleRate, peaks]
+      properties:
+        samplesPerPeak: { type: integer, minimum: 1 }
+        sampleRate: { type: integer, minimum: 1 }
+        peaks: { type: array, items: { type: number, minimum: 0, maximum: 1 } }
+    JobResult:
+      type: object
+      required: [chart, stems, peaks]
+      properties:
+        chart: { $ref: './chart-v2.schema.json' }
+        stems:
+          type: object
+          required: [drums, backing]
+          properties:
+            drums: { type: string }
+            backing: { type: string }
+        peaks: { $ref: '#/components/schemas/WaveformPeaks' }
+    HealthResponse:
+      type: object
+      required: [status, device, models]
+      properties:
+        status: { const: ok }
+        device: { enum: [cpu, cuda] }
+        models:
+          type: object
+          required: [demucs, adtof, beatThis]
+          properties:
+            demucs: { type: string }
+            adtof: { type: string }
+            beatThis: { type: string }

@@ -87,7 +87,9 @@ interface SongClock {
 drumheroweb/
 ├── design/                     # maquetas + boceto PDF
 ├── shared/
-│   └── chart-v2.schema.json    # JSON Schema único: lo validan vitest y pytest
+│   ├── chart-v2.schema.json    # JSON Schema único: lo validan vitest y pytest
+│   ├── openapi.yaml            # contrato de la API del worker
+│   └── examples/               # charts de ejemplo usados por los tests de ambos lados
 ├── worker/
 │   ├── poc/                    # Fase A: scripts + songs/ (gitignored) + REPORT.md
 │   ├── app/                    # Fase B: FastAPI
@@ -168,6 +170,8 @@ Reglas: notas ordenadas por `t`; compás y beat de una nota = búsqueda binaria 
 
 ## 3. Contrato de la API del worker (`/v1`)
 
+Fuente de verdad: `shared/openapi.yaml` (espejo TS en `src/types/api.ts`).
+
 Autenticación: `Authorization: Bearer <JWT de Supabase>`; en modo local, desactivada. CORS solo para `http://localhost:5173` y el dominio de la app.
 
 | Método | Ruta | Descripción |
@@ -208,7 +212,7 @@ queued → separating → transcribing → tempo → quantizing → finalizing �
 
 - `summary` al terminar: `{ bpm, timeSignature, pieces: Piece[], lowConfidenceCount, lowConfidenceByPiece }` → alimenta las 3 tarjetas de la pantalla Importar.
 - La etapa `difficulties` se completa en el cliente (D13); el worker la reporta como `done` al entregar `full`.
-- Códigos de error: `UNSUPPORTED_FORMAT`, `TOO_LONG`, `DECODE_FAILED`, `SEPARATION_FAILED`, `TRANSCRIPTION_FAILED`, `NO_DRUMS_DETECTED`, `INTERNAL`.
+- Códigos de error: `UNSUPPORTED_FORMAT`, `TOO_LONG`, `TOO_LARGE`, `DECODE_FAILED`, `SEPARATION_FAILED`, `TRANSCRIPTION_FAILED`, `NO_DRUMS_DETECTED`, `NOT_READY`, `NOT_FOUND`, `UNAUTHORIZED`, `INTERNAL`. Formato: `{ "error": { "code", "message" } }`.
 - Notificación: Supabase Realtime sobre la fila `jobs`; *fallback* polling cada 2 s. Notificación del navegador (`Notification API`) al terminar si el usuario lo permite.
 
 ### 3.1 Supabase (Fase B)
@@ -348,7 +352,7 @@ Objetivo: decidir si la transcripción es suficientemente buena (bombo, caja y h
 
 | Tarea | Aceptación | Tests |
 |-------|-----------|-------|
-| **A1** `shared/chart-v2.schema.json` + `src/types/chart.ts` + documento OpenAPI `worker/openapi.yaml` (secciones 2 y 3). | El schema valida un chart de ejemplo y rechaza los inválidos; los tipos TS compilan. | vitest: ejemplos válidos e inválidos contra el schema. |
+| **A1** `shared/chart-v2.schema.json` + `src/types/chart.ts` + contrato OpenAPI `shared/openapi.yaml` + `src/types/api.ts` + `validateChartInvariants` (secciones 2 y 3). | El schema valida un chart de ejemplo y rechaza los inválidos; los tipos TS compilan. | vitest: ejemplos válidos e inválidos contra el schema. |
 | **A2** Imagen Docker del PoC (`python:3.10-slim`, ffmpeg, torch CPU, `demucs`, `ADTOF`, `beat_this`); `Dockerfile.cuda` opcional. Comando `docker compose run poc analyze songs/<x>.mp3`. | `health` lista los modelos; la imagen construye desde cero; los pesos se cachean en un volumen. | pytest: smoke test con un WAV sintético de 5 s. |
 | **A3** Pipeline: decode → Demucs (`--two-stems drums`) → ADTOF → beat_this → cuantización a la rejilla (1/16 por defecto, tresillos opcionales) → velocity y confianza → `chart.json` v2 (`full`) + `drums.ogg` + `backing.ogg` + `peaks.json`. | Para cada canción de `songs/`, genera un chart válido según el schema; registra el tiempo por etapa. | pytest: `quantize` (snap, tolerancia, colisiones), `dynamics` (normalización), `chart` (orden, schema), mapeo de clases ADTOF → `Piece` (5 clases: kick, snare, hihat_closed, tom1, crash). |
 | **A4** Herramienta de referencia: ruta de desarrollo `/dev/record-reference` en el frontend: reproduce el MP3 con `AudioClock` (adelanta la tarea B4) y graba los golpes de la TD-02KV en segundos de canción → `reference.json`. Alternativa: importar MIDI o Guitar Pro → `reference.json` con alineación automática por correlación de bombos. | Grabas 1 canción; el JSON contiene tus golpes con tiempos coherentes (prueba manual guiada). | vitest: `AudioClock.perfToSong` con `FakeAudioContext`; conversión MIDI → referencia (pytest con `pretty_midi`). |
