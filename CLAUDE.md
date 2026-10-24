@@ -1,9 +1,15 @@
-# DrumHero Web — Contexto del Proyecto
+# DrumHero AI (V2) — Contexto del Proyecto
 
 ## Visión General
-Aplicación web estilo "Guitar Hero" para batería electrónica real (Roland TD-02KV vía USB-MIDI).
-El usuario conecta la batería, ve una partitura scrollable y golpea los pads en el momento correcto.
-Todo corre en el navegador — sin backend en Fase 1-3.
+Aplicación web estilo Guitar Hero / Melodics para batería electrónica real (Roland TD-02KV vía USB-MIDI).
+El usuario sube un MP3 (y opcionalmente enlaza un video de YouTube), un worker de IA genera la partitura de batería
+y el usuario la toca mientras la partitura se desplaza sincronizada con la música. Cada golpe se califica Perfecto / Cerca / Fallo.
+
+**Documentos fuente de verdad:**
+- `REQUIREMENTS_V2.md` — producto, requisitos, riesgos.
+- `PLAN_V2.md` — arquitectura, chart v2, API del worker, mapa diseño → componentes, tareas por fase con criterios de aceptación.
+- `design/` — maquetas (`Main.dc.html`, `Import.dc.html`, `Results.dc.html`) y `DrumHero AI — Boceto.pdf`. Se reimplementan con React + Tailwind; nunca se copia su marcado.
+- `REQUIREMENTS.md` / `PLAN.md` — MVP V1, solo como histórico.
 
 ---
 
@@ -11,225 +17,108 @@ Todo corre en el navegador — sin backend en Fase 1-3.
 
 | Capa | Tecnología |
 |------|-----------|
-| Framework | React 18 + TypeScript + Vite |
+| Framework | React 19 + TypeScript (strict) + Vite |
 | MIDI | Web MIDI API nativa (sin librerías) |
-| Renderizado | Canvas 2D (no SVG — rendimiento) |
-| Audio/Metrónomo | Tone.js |
-| Video | YouTube IFrame API |
+| Audio / reloj maestro | Web Audio API (`AudioContext`, stems como `AudioBufferSourceNode`) |
+| Renderizado partitura | Canvas 2D |
+| Video | YouTube IFrame API (siempre silenciado) |
 | Estado global | Zustand |
-| Estilos | Tailwind CSS |
-| Persistencia | localStorage (scores) + IndexedDB (canciones custom) |
-| Testing | Vitest + React Testing Library |
+| Estilos | Tailwind CSS v4, tokens en `@theme` (`src/styles/theme.css`) |
+| Persistencia | localStorage (settings) + IndexedDB (audio, stems, charts) + Supabase |
+| Worker IA | Python 3.10 + FastAPI + Demucs + ADTOF + beat_this, en Docker (`worker/`) |
+| Testing | Vitest + RTL (frontend), pytest (worker) |
 
-**Compatibilidad target:** Chrome y Edge únicamente (Web MIDI API no está en Firefox/Safari).
-
----
-
-## Estructura de Directorios
-
-```
-drumheroweb/
-├── public/
-│   ├── songs/              # JSON de canciones precargadas
-│   └── samples/            # Audio samples (kick, snare, etc.)
-├── src/
-│   ├── main.tsx
-│   ├── App.tsx
-│   ├── types/              # Todos los tipos compartidos del dominio
-│   │   └── index.ts
-│   ├── constants/          # Magic numbers del dominio
-│   │   └── game.ts
-│   ├── midi/               # Conexión MIDI y calibración
-│   │   ├── MidiManager.ts
-│   │   ├── midiMap.ts
-│   │   └── useMidi.ts
-│   ├── engine/             # Reloj, evaluación, estado de juego
-│   │   ├── GameEngine.ts
-│   │   ├── SongParser.ts
-│   │   ├── HitEvaluator.ts
-│   │   └── Metronome.ts
-│   ├── renderer/           # Canvas principal y efectos
-│   │   ├── GameCanvas.tsx
-│   │   ├── ScoreRenderer.ts
-│   │   ├── NoteRenderer.ts
-│   │   ├── HUDRenderer.ts
-│   │   └── EffectsRenderer.ts
-│   ├── scoring/
-│   │   ├── ScoreManager.ts
-│   │   └── ComboSystem.ts
-│   ├── songs/
-│   │   ├── songLoader.ts
-│   │   └── songLibrary.ts
-│   ├── youtube/
-│   │   ├── YouTubePlayer.tsx
-│   │   └── SyncManager.ts
-│   ├── store/
-│   │   ├── gameStore.ts        # Estado de sesión de juego (Zustand)
-│   │   ├── settingsStore.ts    # Preferencias (persiste en localStorage)
-│   │   └── progressStore.ts    # Scores y progresión (persiste en localStorage)
-│   ├── ui/
-│   │   ├── screens/            # HomeScreen, SongSelectScreen, GameScreen, ResultsScreen, SettingsScreen, CalibrationScreen
-│   │   └── components/         # Componentes reutilizables sin lógica de negocio
-│   └── hooks/                  # Hooks de propósito general
-│       ├── useMidi.ts
-│       ├── useGameEngine.ts
-│       └── useLocalStorage.ts
-├── tests/
-│   ├── engine/             # Tests de lógica pura (HitEvaluator, SongParser, etc.)
-│   └── setup.ts
-├── CLAUDE.md
-├── PLAN.md
-└── REQUIREMENTS.md
-```
+**Navegadores:** Chrome y Edge de escritorio (Web MIDI).
 
 ---
 
-## Comandos de Desarrollo
+## Comandos
 
 ```bash
-npm run dev          # Servidor local (localhost — necesario para Web MIDI API)
-npm run build        # Build de producción
-npm run preview      # Preview del build
-npm run test         # Vitest watch
+npm run dev          # localhost:5173 (Web MIDI exige localhost o HTTPS, nunca 127.0.0.1)
+npm run build
+npm run typecheck    # tsc -b (revisa app + config)
+npm run lint         # ESLint, 0 warnings
 npm run test:run     # Vitest single run
-npm run test:coverage
-npm run lint         # ESLint (0 warnings permitidos)
-npm run lint:fix     # ESLint con autofix
 npm run format       # Prettier
-npm run typecheck    # tsc --noEmit
 ```
 
-**IMPORTANTE:** Web MIDI API requiere `localhost` o HTTPS. Nunca `127.0.0.1` directamente.
+Worker (a partir de la Fase A): ver `worker/README.md`.
+
+---
+
+## Reglas de oro
+
+1. **Un solo reloj:** la posición de reproducción del MP3 (`SongClock` sobre `AudioContext`). Partitura, metrónomo, video y evaluación de golpes leen ese reloj; nada avanza por su cuenta.
+2. **Golpes MIDI** se evalúan con su propio `MIDIMessageEvent.timeStamp` convertido con `clock.perfToSong()`, no con el tiempo del frame.
+3. **YouTube** solo como video silenciado y sincronizado (offset + corrección si la deriva > 40 ms). Nunca extraer ni procesar su audio.
+4. La IA solo procesa audio subido por el usuario. Los archivos del usuario son privados (`worker/poc/songs/` está en `.gitignore`).
+5. **Nunca `setInterval`/`setTimeout` como reloj del juego.** RAF + `performance.now()` solo para pintar y para agendar con lookahead.
+6. **React no se re-renderiza por frame.** Canvas imperativo; el HUD se actualiza por golpe con selectores de Zustand.
+7. **Modo oscuro por defecto**, como las maquetas. La partitura se pinta sobre papel claro (`#F4F2EC`).
+8. Si `REQUIREMENTS_V2.md` y el diseño se contradicen, preguntar antes de decidir.
+
+---
+
+## Dominio
+
+### Ventanas de acierto por nivel (REQUIREMENTS_V2 §6.5)
+
+| Nivel | Perfecto | Cerca | Puntos (Perfecto / Cerca) |
+|-------|----------|-------|---------------------------|
+| Principiante | ±45 ms | ±110 ms | 100 / 50 |
+| Intermedio | ±30 ms | ±80 ms | 100 / 50 |
+| Experto | ±20 ms | ±50 ms | 100 / 40 |
+
+- Fuera de *Cerca* = Fallo (0 puntos, rompe el combo).
+- Pad incorrecto = feedback gris solamente (no rompe combo ni cuenta en precisión).
+- Puntos por dinámica (opcional): +10 si ghost < 50 de velocity o acento > 100.
+- Combo: x1 (0–9), x2 (10–24), x3 (25–49), x4 (50+).
+- Precisión = (Perfecto + Cerca) / notas evaluadas.
+- **Nivel** (ventanas) y **dificultad** (Básico / Intermedio / Completo = qué notas hay) son ejes independientes.
+
+### MIDI Roland TD-02KV (canal 10, status `0x99`; noteOn con velocity 0 = noteOff)
+
+| Pieza | Nota | | Pieza | Nota |
+|-------|------|-|-------|------|
+| kick | 36 | | tom1 | 48 |
+| snare | 38 | | tom2 | 45 |
+| snare_rim | 40 | | tom3 | 43 |
+| hihat_closed | 42 | | crash | 49 |
+| hihat_open | 46 | | ride | 51 (y 59 borde → ride) |
+| hihat_pedal | 44 | | | |
+
+El mapeo varía por unidad: siempre usar la pantalla de calibración. Latencia del kit calibrada y restada en `HitEvaluator`.
+
+### Chart v2
+Definido en `PLAN_V2.md` §2 y `shared/chart-v2.schema.json`. `t` en segundos desde el inicio del MP3 (fuente de verdad);
+compás y beat se derivan de `grid.beats` / `grid.downbeats`. `confidence < 0.6` = nota "por revisar".
 
 ---
 
 ## Convenciones de Código
 
-- **Componentes React:** PascalCase (`GameCanvas.tsx`)
-- **Utilidades/clases puras:** PascalCase (`GameEngine.ts`)
-- **Hooks:** camelCase con prefijo `use` (`useMidi.ts`)
-- **Stores Zustand:** camelCase con sufijo `Store` (`gameStore.ts`)
-- **Tipos/interfaces:** PascalCase, sin prefijo `I` (`SongData`, `NoteEvent`)
-- **Enums:** PascalCase (`HitAccuracy.Perfect`, `HitAccuracy.Great`)
-- **Constantes:** SCREAMING_SNAKE_CASE para magic numbers (`PERFECT_WINDOW_MS = 30`)
-- **Imports:** Siempre usar path alias `@/` — nunca paths relativos con más de un nivel
+- Componentes React y clases: PascalCase (`GameCanvas.tsx`, `GameEngine.ts`). Hooks: `useXxx`. Stores: `xxxStore.ts`.
+- Tipos sin prefijo `I`. Constantes de dominio en SCREAMING_SNAKE_CASE.
+- Imports con alias `@/`; nunca paths relativos de más de un nivel. Orden: externos → `@/types`, `@/constants` → módulos internos → relativos.
+- Colores y tipografía solo desde tokens (`theme.css` en DOM, `constants/theme.ts` en canvas). Nada de hex sueltos en componentes.
+- Comentarios en español, como el código existente.
 
-### Orden de imports
-1. React y librerías externas
-2. `@/types`, `@/constants`
-3. Módulos internos `@/engine`, `@/midi`, etc.
-4. Imports relativos del mismo directorio (solo si aplica)
+## Calidad y flujo de trabajo
+
+- `npm run typecheck`, `npm run lint` y `npm run test:run` deben pasar antes de cada commit.
+- Husky pre-commit → lint-staged. **Nunca `--no-verify`.**
+- Conventional commits. Una feature por vez: describir → implementar → tests → checks → commit → esperar confirmación.
+- Testear lógica pura (evaluador, motor con `FakeClock`, scoring, layouts, parsers). No testear canvas ni Web MIDI real; eso se valida con pruebas manuales guiadas con el hardware.
 
 ---
 
-## Tooling y Calidad de Código
+## Estado Actual
 
-- **ESLint** con `@typescript-eslint` + `eslint-plugin-react-hooks` — `npm run lint` debe pasar con 0 warnings
-- **Prettier** para formatting — no mezclar con reglas de ESLint
-- **Husky pre-commit** → lint-staged (ESLint + Prettier solo en archivos staged)
-- **NO hacer `--no-verify`** para saltarse hooks. Si falla, arreglar el problema.
-- **Vitest** con jsdom — solo testear lógica pura (HitEvaluator, SongParser, ComboSystem)
-- **NO testear** canvas ni Web MIDI API (requieren browser real)
+**Fase:** 0 completada (preparación). **Próximo:** Fase A — A1 (chart v2 schema + contrato API).
 
----
-
-## Reglas Críticas del Dominio
-
-### MIDI
-- Las notas de la Roland TD-02KV vienen en **canal 10** (index 9 en Web MIDI, status byte `0x99`)
-- `noteOn` con velocity 0 = `noteOff` en Roland — tratar igual que noteOff
-- El mapeo de notas puede variar por unidad — siempre usar la pantalla de calibración
-- Latencia offset configurable en ms en Settings
-
-### Timing y Rendimiento
-- **NUNCA usar `setInterval`** para el reloj del juego — usar `performance.now()` dentro de `requestAnimationFrame`
-- El canvas debe mantener **60fps** — todo cálculo pesado fuera del RAF loop
-- Pipeline MIDI input → evaluación debe ser **<10ms**
-- El evaluador de hits compara `performance.now()` timestamp del golpe vs posición esperada de la nota
-
-### Ventanas de Precisión
-```
-Perfect: ±30ms  → 100 puntos
-Great:   ±60ms  → 75 puntos
-Good:    ±100ms → 50 puntos
-Miss:    >100ms → 0 puntos
-```
-
-### Multiplicadores de Combo
-```
-x1: 0-9 hits consecutivos
-x2: 10-24
-x3: 25-49
-x4: 50+
-```
-
----
-
-## Formato de Canción (JSON)
-
-```json
-{
-  "id": "basic-rock-001",
-  "title": "Basic Rock Beat",
-  "bpm": 80,
-  "timeSignature": [4, 4],
-  "youtubeUrl": null,
-  "measures": [
-    {
-      "number": 1,
-      "notes": [
-        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 }
-      ]
-    }
-  ]
-}
-```
-
-`subdivision`: 0 = en el beat, 0.5 = corchea entre beats, 0.25/0.75 = semicorcheas.
-
----
-
-## Mapa MIDI Roland TD-02KV
-
-| Instrumento | Nota MIDI |
-|-------------|-----------|
-| Kick | 36 |
-| Snare (head) | 38 |
-| Snare (rim) | 40 |
-| Hi-Hat Closed | 42 |
-| Hi-Hat Open | 46 |
-| Hi-Hat Pedal | 44 |
-| Tom 1 | 48 |
-| Tom 2 | 45 |
-| Crash | 49 |
-| Ride (bow) | 51 |
-| Ride (edge) | 59 |
-
----
-
-## Estado Actual del Proyecto
-
-**Fase:** Scaffolding completado — listo para Sprint 1.
-**Próximo paso:** Implementar `src/types/index.ts` y `src/constants/game.ts`.
-
-### Fases de Desarrollo
-- [x] **Sprint 0:** Scaffolding (Vite + TS + Tailwind + ESLint + Husky + Vitest)
-- [ ] **Sprint 1:** Tipos del dominio y constantes
-- [ ] **Sprint 2:** Módulo MIDI + calibración
-- [ ] **Sprint 3:** GameEngine + SongParser + HitEvaluator
-- [ ] **Sprint 4:** Renderer (Canvas + notas + HUD + efectos)
-- [ ] **Sprint 5:** Scoring + Stores + persistencia
-- [ ] **Sprint 6:** UI Screens + canciones JSON
-- [ ] **Sprint 7:** Pulido MVP (60fps, latencia, PWA)
-
----
-
-## Restricciones y Decisiones Arquitecturales
-
-- **Sin backend** hasta Fase 4 — todo en el browser
-- **Canvas 2D** sobre SVG — el scroll de notas a 60fps es crítico
-- **Zustand** sobre Redux — estado de juego en tiempo real no necesita Redux DevTools
-- **Web MIDI API nativa** — no usar librerías wrapper que añadan latencia
-- **No usar `setInterval`** ni `setTimeout` para timing del juego
-- **React NO se re-renderiza en cada frame** — el canvas es imperativo, Zustand notifica a React solo en cambios de pantalla
-- Testear siempre con hardware real — emuladores MIDI no replican latencia real
+- [x] Fase 0 — preparación (design/, strict typecheck, husky, CLAUDE.md V2)
+- [ ] Fase A — prueba de concepto de IA
+- [ ] Fase B — juego con chart propio
+- [ ] Fase C — YouTube y editor
+- [ ] Fase D — aprendizaje
