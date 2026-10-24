@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { GameCanvas } from '@/renderer/GameCanvas'
 import { useGameEngine } from '@/hooks/useGameEngine'
-import { useGameStore } from '@/store/gameStore'
+import { useGameStore } from '@/store/legacy/gameStoreV1'
 import type { SongData } from '@/types'
 
 interface GameScreenProps {

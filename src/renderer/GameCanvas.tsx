@@ -4,7 +4,7 @@ import { flattenNotes } from '@/engine/SongParser'
 import { createEffect, drawEffects, pruneEffects } from '@/renderer/EffectsRenderer'
 import { drawHUD } from '@/renderer/HUDRenderer'
 import { drawNotes } from '@/renderer/NoteRenderer'
-import { useGameStore } from '@/store/gameStore'
+import { useGameStore } from '@/store/legacy/gameStoreV1'
 import type { ActiveEffect } from '@/renderer/EffectsRenderer'
 import type { NoteEvent, SongData } from '@/types'
 

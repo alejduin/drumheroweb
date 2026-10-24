@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { metronome } from '@/engine/Metronome'
-import { useGameStore } from '@/store/gameStore'
+import { useGameStore } from '@/store/legacy/gameStoreV1'
 import { useSettingsStore } from '@/store/settingsStore'
 import type { SongData } from '@/types'
 

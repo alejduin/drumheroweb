@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { getStars } from '@/constants/game'
-import { useGameStore } from '@/store/gameStore'
+import { useGameStore } from '@/store/legacy/gameStoreV1'
 import { useProgressStore } from '@/store/progressStore'
 import type { SongData } from '@/types'
 
