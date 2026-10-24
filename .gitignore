@@ -33,6 +33,8 @@ __pycache__/
 .pytest_cache/
 
 # Audio del usuario y salidas del PoC (nunca al repo)
-worker/poc/songs/
+worker/poc/songs/*
+!worker/poc/songs/README.md
+worker/poc/references/*
+!worker/poc/references/README.md
 worker/poc/out/
-worker/poc/references/
