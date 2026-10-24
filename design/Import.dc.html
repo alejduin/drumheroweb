@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>DrumHero AI · Importar canción</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0C10}
+a{color:#C4B5FD}a:hover{color:#DDD6FE}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; padding: 40px; background: #0B0C10; color: #ECEDF2; font-family: 'Archivo', system-ui, sans-serif; display: flex; flex-direction: column; gap: 28px">
+  <div style="display: flex; flex-direction: column; gap: 6px">
+    <span style="font-size: 12px; color: #9AA0B4; letter-spacing: 0.08em">NUEVA CANCIÓN</span>
+    <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em">Convierte tu canción en partitura</h1>
+  </div>
+  <div style="display: flex; gap: 28px; flex: 1; min-height: 0">
+    <div style="width: 520px; display: flex; flex-direction: column; gap: 20px">
+      <div style="border-radius: 16px; border: 2px dashed #3A3E4D; background: #13141B; height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px">
+        <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 28 V10 M12 18 L20 10 L28 18 M8 30 V33 H32 V30" fill="none" stroke="{{accent}}" style="stroke-width: 2.5px; stroke-linecap: round; stroke-linejoin: round"></path></svg>
+        <span style="font-size: 16px; font-weight: 700">Arrastra tu MP3, WAV o M4A</span>
+        <span style="font-size: 13px; color: #9AA0B4">o <a href="#">elige un archivo</a> · máximo 10 minutos</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <label for="yt" style="font-size: 13px; font-weight: 600">Video de YouTube <span style="color: #9AA0B4; font-weight: 400">(opcional, solo para ver)</span></label>
+        <input id="yt" type="url" placeholder="https://youtube.com/watch?v=…" style="height: 46px; border-radius: 10px; border: 1px solid #2E3240; background: #13141B; color: #ECEDF2; padding: 0 14px; font-family: inherit; font-size: 14px">
+        <span style="font-size: 12px; color: #9AA0B4">La IA analiza solo tu archivo de audio. El video se reproduce silenciado y sincronizado.</span>
+      </div>
+      <div style="display: flex; gap: 12px">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+          <label for="ti" style="font-size: 13px; font-weight: 600">Título</label>
+          <input id="ti" type="text" value="[Mi canción]" style="height: 42px; border-radius: 10px; border: 1px solid #2E3240; background: #13141B; color: #ECEDF2; padding: 0 12px; font-family: inherit; font-size: 14px">
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+          <label for="ar" style="font-size: 13px; font-weight: 600">Artista</label>
+          <input id="ar" type="text" value="[Artista]" style="height: 42px; border-radius: 10px; border: 1px solid #2E3240; background: #13141B; color: #ECEDF2; padding: 0 12px; font-family: inherit; font-size: 14px">
+        </div>
+      </div>
+      <button style="height: 50px; border-radius: 12px; border: 0; background: {{accent}}; color: #15161C; font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer">Analizar con IA</button>
+    </div>
+
+    <div style="flex: 1; border-radius: 16px; background: #13141B; border: 1px solid #22252F; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span style="font-size: 16px; font-weight: 700">Analizando [mi-cancion].mp3</span>
+        <span style="font-size: 12px; color: #9AA0B4">te avisamos al terminar</span>
+      </div>
+      <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; gap: 14px">
+          <div style="width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: {{s.bg}}; color: {{s.fg}}">{{s.icon}}</div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+            <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">{{s.name}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9AA0B4">{{s.status}}</span></div>
+            <div style="height: 4px; border-radius: 2px; background: #22252F"><div style="height: 4px; border-radius: 2px; width: {{s.pct}}%; background: {{s.bar}}"></div></div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="margin-top: 6px; border-top: 1px solid #22252F; padding-top: 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+        <div style="border-radius: 10px; background: #171922; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11px; color: #9AA0B4; letter-spacing: 0.08em">TEMPO</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700">104 BPM</span><span style="font-size: 12px; color: #9AA0B4">4/4 · editable</span></div>
+        <div style="border-radius: 10px; background: #171922; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11px; color: #9AA0B4; letter-spacing: 0.08em">PIEZAS</span><span style="font-size: 15px; font-weight: 700; line-height: 1.35">Bombo, caja, hi-hat, toms, crash</span></div>
+        <div style="border-radius: 10px; background: #2A2312; border: 1px solid #5C4710; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11px; color: #FDE68A; letter-spacing: 0.08em">POR REVISAR</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: #FDE68A">[N] notas</span><span style="font-size: 12px; color: #FDE68A">baja confianza, sobre todo toms</span></div>
+      </div>
+      <div style="flex: 1"></div>
+      <div style="display: flex; gap: 12px">
+        <button style="flex: 1; height: 46px; border-radius: 10px; border: 1px solid #2E3240; background: #171922; color: #ECEDF2; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer">Revisar en el editor</button>
+        <button style="flex: 1; height: 46px; border-radius: 10px; border: 1px solid #2E3240; background: #171922; color: #ECEDF2; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer">Sincronizar video</button>
+        <button style="flex: 1; height: 46px; border-radius: 10px; border: 0; background: #ECEDF2; color: #15161C; font-family: inherit; font-size: 14px; font-weight: 800; cursor: pointer">Jugar ahora</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#A78BFA","options":["#A78BFA","#60A5FA","#F472B6"]},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var accent = this.props.accent ?? '#A78BFA';
+    var done = { bg: '#13261F', fg: '#34D399', icon: '✓', pct: 100, bar: '#34D399', status: 'listo' };
+    var wait = { bg: '#1B1D26', fg: '#6B6F7E', pct: 0, bar: '#2E3240', status: 'en espera' };
+    var steps = [
+      Object.assign({ name: 'Separar la batería del resto' }, done),
+      Object.assign({ name: 'Detectar golpes por pieza' }, { bg: '#221E35', fg: accent, icon: '2', pct: 62, bar: accent, status: '62%' }),
+      Object.assign({ name: 'Detectar tempo y compases', icon: '3' }, wait),
+      Object.assign({ name: 'Cuantizar a la rejilla', icon: '4' }, wait),
+      Object.assign({ name: 'Generar 3 dificultades', icon: '5' }, wait)
+    ];
+    return { accent: accent, steps: steps };
+  }
+}
+</script>
+</body>
+</html>

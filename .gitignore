@@ -23,3 +23,16 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 .idea/
+Thumbs.db
+*:Zone.Identifier
+
+# Worker Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Audio del usuario y salidas del PoC (nunca al repo)
+worker/poc/songs/
+worker/poc/out/
+worker/poc/references/
