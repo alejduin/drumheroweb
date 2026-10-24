@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -23,15 +24,21 @@ class AudioDecodeError(RuntimeError):
     """El archivo no se pudo decodificar (formato no soportado o corrupto)."""
 
 
-def probe_duration_s(path: str | Path) -> float:
-    """Duración en segundos según el contenedor (sin decodificar)."""
+@dataclass(frozen=True)
+class AudioInfo:
+    duration_s: float
+    tags: dict[str, str]  # etiquetas del contenedor (ID3, Vorbis…), claves en minúscula
+
+
+def probe(path: str | Path) -> AudioInfo:
+    """Duración y etiquetas según el contenedor (sin decodificar)."""
     result = subprocess.run(
         [
             "ffprobe",
             "-v",
             "error",
             "-show_entries",
-            "format=duration",
+            "format=duration:format_tags",
             "-of",
             "json",
             str(path),
@@ -42,9 +49,17 @@ def probe_duration_s(path: str | Path) -> float:
     if result.returncode != 0:
         raise AudioDecodeError(result.stderr.decode(errors="replace").strip())
     try:
-        return float(json.loads(result.stdout)["format"]["duration"])
+        fmt = json.loads(result.stdout)["format"]
+        duration = float(fmt["duration"])
     except (KeyError, ValueError) as exc:
         raise AudioDecodeError(f"duración no disponible: {path}") from exc
+    tags = {str(k).lower(): str(v).strip() for k, v in fmt.get("tags", {}).items()}
+    return AudioInfo(duration_s=duration, tags=tags)
+
+
+def probe_duration_s(path: str | Path) -> float:
+    """Duración en segundos según el contenedor (sin decodificar)."""
+    return probe(path).duration_s
 
 
 def decode(path: str | Path, sample_rate: int = SAMPLE_RATE, channels: int = CHANNELS) -> np.ndarray:

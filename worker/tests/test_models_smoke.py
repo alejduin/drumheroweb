@@ -68,3 +68,30 @@ def test_beat_this_grid(groove, device):
     assert np.all(np.diff(grid.beats) > 0)
     assert np.median(np.diff(grid.beats)) == pytest.approx(groove.beat_s, rel=0.1)
     assert len(grid.downbeats) >= 1
+
+
+def test_analyze_end_to_end(tmp_path, device):
+    import json
+
+    import soundfile as sf
+
+    from app.pipeline.run import Models, analyze
+
+    groove = make_groove(seconds=8.0)
+    src = tmp_path / "groove sintetico.wav"
+    sf.write(src, groove.mix.T, SAMPLE_RATE, subtype="FLOAT")
+
+    result = analyze(src, tmp_path / "out", Models.load(device))
+
+    assert result.out_dir.name == "groove-sintetico"
+    for name in ("chart.json", "drums.ogg", "backing.ogg", "peaks.json", "run.json"):
+        assert (result.out_dir / name).stat().st_size > 0
+    chart = json.loads((result.out_dir / "chart.json").read_text())
+    assert chart == result.chart
+    assert set(result.timings) == {"decode", "separate", "transcribe", "tempo", "quantize", "finalize"}
+    assert 110 <= chart["bpm"] <= 130
+
+    # Cada bombo real tiene una nota de bombo a <= 50 ms
+    kicks = np.array([n["tRaw"] for n in chart["difficulties"]["full"]["notes"] if n["piece"] == "kick"])
+    for t in groove.onsets["kick"]:
+        assert np.abs(kicks - t).min() <= 0.05, f"bombo en {t:.2f}s"

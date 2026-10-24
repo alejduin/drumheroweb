@@ -9,6 +9,8 @@ Contratos: `../shared/chart-v2.schema.json` y `../shared/openapi.yaml`.
 ```bash
 docker compose build poc                       # primera vez: ~10-20 min
 docker compose run --rm poc health             # carga los 3 modelos (descarga pesos la 1.ª vez)
+docker compose run --rm poc analyze poc/songs  # todas las canciones → poc/out/<id>/
+docker compose run --rm poc analyze "poc/songs/Mi canción.mp3" --triplets --tolerance-ms 35
 docker compose run --rm --entrypoint pytest poc -m "not models"   # tests rápidos
 docker compose run --rm --entrypoint pytest poc                   # todos (incluye modelos)
 docker compose run --rm --entrypoint ruff poc check . && docker compose run --rm --entrypoint ruff poc format --check .
@@ -28,7 +30,21 @@ docker compose run --rm --entrypoint ruff poc check . && docker compose run --rm
 | `app/pipeline/separate.py` | Demucs → stems `drums` / `backing` |
 | `app/pipeline/transcribe.py` | ADTOF → activaciones `[frames, 5]` a 100 fps |
 | `app/pipeline/tempo.py` | beat_this → beats y downbeats en segundos |
+| `app/pipeline/quantize.py` | rejilla (1/16, tresillos opcionales) y ajuste con tolerancia; colisiones |
+| `app/pipeline/dynamics.py` | velocity por RMS filtrado por banda, normalizada por pieza; ghost / acento |
+| `app/pipeline/chart.py` | chart v2 (`full`), limpieza de la rejilla, validación schema + invariantes |
+| `app/pipeline/peaks.py` | picos de forma de onda (`peaks.json`) |
+| `app/pipeline/run.py` | orquesta las etapas y registra el tiempo de cada una |
 | `poc/` | CLI del PoC (Fase A); `songs/` y `references/` son del usuario y no se versionan |
+
+## Salida de `analyze`
+
+`poc/out/<id>/` (no se versiona): `chart.json`, `drums.ogg`, `backing.ogg` (Opus 160 kbps;
+`drums + backing` = mezcla original), `peaks.json` y `run.json` (tiempos por etapa, notas por pieza,
+% de notas ajustadas a la rejilla).
+
+Mapeo ADTOF → pieza: kick → `kick`, snare → `snare`, tom → `tom1`, hihat → `hihat_closed`,
+cymbal → `crash`. Las demás piezas se asignan en el editor (Fase C).
 
 ## Licencias de modelos
 

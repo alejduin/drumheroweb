@@ -1,11 +1,12 @@
 """Etapa 2 — detectar golpes por clase con ADTOF (Frame_RNN, port PyTorch).
 
-ADTOF da 5 clases. El mapeo a las piezas del chart v2 se hace en A3; aquí
-solo se exponen las activaciones por frame (0-1) a ADTOF_FPS.
+ADTOF da activaciones por frame (0-1) para 5 clases a ADTOF_FPS; `pick_onsets`
+las convierte en golpes con tiempo y confianza, ya mapeados a piezas del chart v2.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from importlib.resources import files
 
 import numpy as np
@@ -18,6 +19,64 @@ ADTOF_CLASSES = ("kick", "snare", "tom", "hihat", "cymbal")
 ADTOF_LABELS = (35, 38, 47, 42, 49)
 # Umbrales por clase publicados por ADTOF para Frame_RNN
 ADTOF_THRESHOLDS = (0.22, 0.24, 0.32, 0.22, 0.30)
+
+# ADTOF no distingue hi-hat abierto/cerrado, toms ni crash/ride: cada clase va a la
+# pieza más común; el resto se corrige en el editor (Fase C).
+ADTOF_TO_PIECE = {
+    "kick": "kick",
+    "snare": "snare",
+    "tom": "tom1",
+    "hihat": "hihat_closed",
+    "cymbal": "crash",
+}
+
+# Dos picos de la misma clase más cercanos que esto son un solo golpe
+MIN_ONSET_GAP_S = 0.03
+
+
+@dataclass(frozen=True)
+class Onset:
+    t: float  # segundos, con resolución sub-frame
+    piece: str
+    confidence: float  # pico de activación (PLAN_V2 D17)
+
+
+def pick_onsets(
+    act: np.ndarray,
+    fps: float = ADTOF_FPS,
+    thresholds: tuple[float, ...] = ADTOF_THRESHOLDS,
+    min_gap_s: float = MIN_ONSET_GAP_S,
+) -> list[Onset]:
+    """Picos locales por clase sobre el umbral → golpes ordenados por tiempo."""
+    onsets: list[Onset] = []
+    padded = np.pad(act, ((1, 1), (0, 0)), constant_values=0.0)
+    for cls, (name, threshold) in enumerate(zip(ADTOF_CLASSES, thresholds, strict=True)):
+        a = padded[:, cls]
+        center = a[1:-1]
+        # >= a la derecha y > a la izquierda: una meseta da un solo pico
+        is_peak = (center >= threshold) & (center > a[:-2]) & (center >= a[2:])
+        frames = np.flatnonzero(is_peak)
+        kept: list[tuple[float, float]] = []
+        for f in frames:
+            prev, peak, nxt = a[f], a[f + 1], a[f + 2]
+            t = (f + _parabolic_offset(prev, peak, nxt)) / fps
+            if kept and t - kept[-1][0] < min_gap_s:
+                if peak > kept[-1][1]:
+                    kept[-1] = (t, float(peak))
+                continue
+            kept.append((t, float(peak)))
+        piece = ADTOF_TO_PIECE[name]
+        onsets.extend(Onset(t=max(t, 0.0), piece=piece, confidence=min(c, 1.0)) for t, c in kept)
+    onsets.sort(key=lambda o: (o.t, o.piece))
+    return onsets
+
+
+def _parabolic_offset(prev: float, peak: float, nxt: float) -> float:
+    """Desplazamiento (-0.5..0.5 frames) del máximo de la parábola por 3 puntos."""
+    denom = prev - 2 * peak + nxt
+    if denom >= 0:  # no es un máximo estricto (meseta)
+        return 0.0
+    return float(np.clip(0.5 * (prev - nxt) / denom, -0.5, 0.5))
 
 
 class DrumTranscriber:
