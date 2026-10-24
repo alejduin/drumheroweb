@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { gameEngine } from '@/engine/GameEngine'
+import { gameEngine } from '@/engine/legacy/GameEngineV1'
 import { comboSystem } from '@/scoring/ComboSystem'
 import { scoreManager } from '@/scoring/ScoreManager'
 import { HitAccuracy } from '@/types'

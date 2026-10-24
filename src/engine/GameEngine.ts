@@ -1,241 +1,242 @@
-import { GOOD_WINDOW_MS, POINTS } from '@/constants/game'
-import { evaluateHit, findClosestNote, isNoteMissed } from '@/engine/HitEvaluator'
-import { flattenNotes } from '@/engine/SongParser'
-import { midiManager } from '@/midi/MidiManager'
-import { HitAccuracy } from '@/types'
-import type { HitResult, MidiHit, NoteEvent, SongData } from '@/types'
+import type { SongClock } from '@/audio/AudioClock'
+import type { ChartNote, ChartV2, Difficulty, JudgementEvent, MidiHit } from '@/types'
+import { HitEvaluator } from './HitEvaluator'
+import type { HitEvaluatorOptions } from './HitEvaluator'
 
-// ─── Tipos de callbacks ───────────────────────────────────────────────────────
+// Margen antes de dar una nota por Fallo: un MIDIMessageEvent con timestamp anterior
+// puede llegar después del frame (cola de eventos del hilo principal)
+export const MISS_GRACE_S = 0.03
 
-type HitResultCallback = (result: HitResult) => void
-type MissCallback = (note: NoteEvent) => void
-type FrameCallback = (gameTimeMs: number) => void
-type SongEndCallback = () => void
+/** Juicio con su instante en segundos de canción (nota para aciertos y Fallos, golpe para pad incorrecto). */
+export type TimedJudgement = JudgementEvent & { t: number }
 
-// ─── GameEngine ───────────────────────────────────────────────────────────────
+export interface LoopRange {
+  startS: number
+  endS: number
+}
+
+/** Resultado de una vuelta del loop A–B (para la rampa de tempo de D3). */
+export interface LoopLap {
+  lap: number // 1, 2, …
+  judgements: readonly TimedJudgement[] // los de esta vuelta, dentro del rango
+}
+
+/** Quien mueve el audio (StemPlayer). El engine lo usa para el loop A–B. */
+export interface Transport {
+  seek(songTime: number): void
+}
+
+/** Agenda de frames (requestAnimationFrame en la app; manual en tests). */
+export interface FrameScheduler {
+  request(callback: () => void): number
+  cancel(id: number): void
+}
+
+const rafScheduler: FrameScheduler = {
+  request: callback => requestAnimationFrame(callback),
+  cancel: id => cancelAnimationFrame(id),
+}
+
+export type EnginePhase = 'idle' | 'running' | 'ended'
+
+export interface GameEngineDeps {
+  clock: SongClock
+  transport?: Transport
+  scheduler?: FrameScheduler
+}
+
+type Listener<T> = (value: T) => void
 
 /**
- * GameEngine — orquesta el loop principal del juego.
+ * GameEngine v2 — juega un chart sobre el reloj maestro (SongClock).
  *
- * Responsabilidades:
- *  - Mantener el reloj de la canción con performance.now()
- *  - Recibir hits MIDI y matchearlos a notas pendientes
- *  - Detectar misses (notas que vencieron sin ser golpeadas)
- *  - Emitir eventos a suscriptores (renderer, scoring, UI)
+ * No reproduce audio ni lleva tiempo propio: en cada frame lee clock.now(), expira
+ * las notas cuya ventana cerró (Fallos), detecta el fin por durationS y el loop A–B.
+ * Los golpes MIDI se evalúan con su propio timestamp vía clock.perfToSong().
  *
- * NO contiene lógica de render ni de React.
+ * Mantiene el registro de juicios de la partida; un seek lo recorta y avisa con
+ * onReset para que el scoring se reconstruya (B6).
  */
 export class GameEngine {
-  private song: SongData | null = null
-  private allNotes: NoteEvent[] = []
+  private readonly clock: SongClock
+  private readonly transport: Transport | null
+  private readonly scheduler: FrameScheduler
 
-  // Índice de la primera nota que aún puede ser golpeada o missada
-  private noteHead = 0
+  private chart: ChartV2 | null = null
+  private notes: readonly ChartNote[] = []
+  private evaluator: HitEvaluator | null = null
+  private log: TimedJudgement[] = []
+  private loop: LoopRange | null = null
+  private loopLap = 0
+  private frameId: number | null = null
+  private currentPhase: EnginePhase = 'idle'
 
-  // Notas que ya están en la ventana de evaluación pero no se han resuelto
-  private pendingNotes: NoteEvent[] = []
+  private readonly judgementListeners = new Set<Listener<TimedJudgement>>()
+  private readonly resetListeners = new Set<Listener<readonly TimedJudgement[]>>()
+  private readonly loopListeners = new Set<Listener<LoopLap>>()
+  private readonly endListeners = new Set<Listener<readonly TimedJudgement[]>>()
 
-  // Set de notas ya resueltas (para no procesarlas dos veces)
-  private resolvedNotes = new Set<NoteEvent>()
-
-  private songStartTime: number | null = null
-  private rafId: number | null = null
-  private isRunning = false
-  private latencyOffsetMs = 0
-
-  // ─── Callbacks ──────────────────────────────────────────────────────────────
-
-  private hitResultCallbacks = new Set<HitResultCallback>()
-  private missCallbacks = new Set<MissCallback>()
-  private frameCallbacks = new Set<FrameCallback>()
-  private songEndCallbacks = new Set<SongEndCallback>()
-
-  // ─── API pública ─────────────────────────────────────────────────────────────
-
-  load(song: SongData, latencyOffsetMs = 0): void {
-    // Detener cualquier partida en curso antes de resetear
-    // (necesario para React StrictMode que invoca effects dos veces en dev)
-    this.pause()
-    this.unsubMidi?.()
-    this.unsubMidi = null
-    this.song = song
-    this.latencyOffsetMs = latencyOffsetMs
-    this.allNotes = flattenNotes(song)
-    this.reset()
+  constructor({ clock, transport, scheduler = rafScheduler }: GameEngineDeps) {
+    this.clock = clock
+    this.transport = transport ?? null
+    this.scheduler = scheduler
   }
 
+  get phase(): EnginePhase {
+    return this.currentPhase
+  }
+
+  /** Notas de la dificultad cargada (índices = noteIndex de los juicios). */
+  get chartNotes(): readonly ChartNote[] {
+    return this.notes
+  }
+
+  /** Juicios de la partida en orden de llegada. */
+  get judgements(): readonly TimedJudgement[] {
+    return this.log
+  }
+
+  load(chart: ChartV2, difficulty: Difficulty, options: HitEvaluatorOptions): void {
+    this.stop()
+    this.chart = chart
+    this.notes = chart.difficulties[difficulty].notes
+    this.evaluator = new HitEvaluator(this.notes, options)
+    this.log = []
+    this.loop = null
+    this.loopLap = 0
+    this.currentPhase = 'idle'
+    this.evaluator.seek(this.clock.now())
+  }
+
+  /** Arranca el bucle de frames. El audio lo arranca quien controla el StemPlayer. */
   start(): void {
-    if (!this.song || this.isRunning) return
-    this.reset()
-    this.songStartTime = performance.now()
-    this.isRunning = true
-    this.unsubMidi = midiManager.onHit(hit => this.handleHit(hit))
-    this.rafId = requestAnimationFrame(this.loop)
+    if (!this.chart || this.currentPhase === 'running') return
+    if (this.currentPhase === 'ended') this.seek(0)
+    this.currentPhase = 'running'
+    this.scheduleFrame()
   }
 
-  pause(): void {
-    if (!this.isRunning) return
-    this.isRunning = false
-    if (this.rafId !== null) {
-      cancelAnimationFrame(this.rafId)
-      this.rafId = null
-    }
-  }
-
-  resume(): void {
-    if (this.isRunning || !this.song || this.songStartTime === null) return
-    // Reajustar el origen del reloj para compensar el tiempo pausado
-    const pausedAt = this.currentGameTimeMs()
-    this.songStartTime = performance.now() - pausedAt
-    this.isRunning = true
-    this.rafId = requestAnimationFrame(this.loop)
-  }
-
+  /** Detiene el bucle (pausa o salida). El estado de la partida se conserva. */
   stop(): void {
-    this.pause()
-    this.unsubMidi?.()
-    this.unsubMidi = null
-    this.reset()
+    if (this.frameId !== null) this.scheduler.cancel(this.frameId)
+    this.frameId = null
+    if (this.currentPhase === 'running') this.currentPhase = 'idle'
   }
 
-  setLatencyOffset(ms: number): void {
-    this.latencyOffsetMs = ms
+  /**
+   * Reconstruye el estado para jugar desde `songTime`: se descartan los juicios
+   * desde ese punto y esas notas vuelven a estar pendientes. Llamar después de
+   * mover el audio (player.seek).
+   */
+  seek(songTime: number): void {
+    if (!this.evaluator) return
+    this.evaluator.seek(songTime)
+    this.log = this.log.filter(j => j.t < songTime)
+    if (this.currentPhase === 'ended') this.currentPhase = 'idle'
+    this.emit(this.resetListeners, this.log)
   }
 
-  currentGameTimeMs(): number {
-    if (this.songStartTime === null) return 0
-    return performance.now() - this.songStartTime
+  /** Loop A–B: al llegar a endS vuelve a startS (Fase D). null lo desactiva. */
+  setLoop(range: LoopRange | null): void {
+    if (range && !(range.endS > range.startS)) {
+      throw new RangeError(`loop inválido: ${range.startS}–${range.endS}`)
+    }
+    this.loop = range
+    this.loopLap = 0
+  }
+
+  /** Golpe MIDI: se evalúa con su timestamp convertido al tiempo de la canción. */
+  handleHit(hit: MidiHit): TimedJudgement | null {
+    if (!this.evaluator || !this.chart || this.currentPhase !== 'running') return null
+    if (!this.clock.isPlaying) return null
+    const t = this.clock.perfToSong(hit.timestamp)
+    if (t < 0 || t > this.chart.durationS) return null
+    const result = this.evaluator.judge({ t, piece: hit.instrument, velocity: hit.velocity })
+    const timed: TimedJudgement =
+      result.judgement === 'wrong_pad'
+        ? { ...result, t }
+        : { ...result, t: this.notes[result.noteIndex].t }
+    this.record(timed)
+    return timed
+  }
+
+  /** Un paso del bucle. Público para tests y para forzar una actualización tras un seek. */
+  tick(): void {
+    if (!this.evaluator || !this.chart || this.currentPhase !== 'running') return
+    const now = this.clock.now()
+
+    if (this.loop && now >= this.loop.endS) {
+      const { startS, endS } = this.loop
+      // Las notas antes de endS ya no se pueden tocar en esta vuelta: Fallo
+      this.expireUntil(endS + this.evaluator.windows.closeMs / 1000)
+      this.loopLap++
+      this.emit(this.loopListeners, {
+        lap: this.loopLap,
+        judgements: this.log.filter(j => j.t >= startS && j.t < endS),
+      })
+      this.transport?.seek(startS)
+      this.seek(startS)
+      return
+    }
+
+    if (now >= this.chart.durationS) {
+      this.expireUntil(Infinity)
+      this.currentPhase = 'ended'
+      this.stop()
+      this.emit(this.endListeners, this.log)
+      return
+    }
+
+    this.expireUntil(now - MISS_GRACE_S)
   }
 
   // ─── Suscripciones ───────────────────────────────────────────────────────────
 
-  onHitResult(cb: HitResultCallback): () => void {
-    this.hitResultCallbacks.add(cb)
-    return () => this.hitResultCallbacks.delete(cb)
+  onJudgement(listener: Listener<TimedJudgement>): () => void {
+    return this.subscribe(this.judgementListeners, listener)
   }
 
-  onMiss(cb: MissCallback): () => void {
-    this.missCallbacks.add(cb)
-    return () => this.missCallbacks.delete(cb)
+  /** Tras un seek o una vuelta del loop, con los juicios que siguen vigentes. */
+  onReset(listener: Listener<readonly TimedJudgement[]>): () => void {
+    return this.subscribe(this.resetListeners, listener)
   }
 
-  /** Llamado en cada frame del RAF con el tiempo actual de la canción en ms */
-  onFrame(cb: FrameCallback): () => void {
-    this.frameCallbacks.add(cb)
-    return () => this.frameCallbacks.delete(cb)
+  /** Vuelta completa del loop A–B, con sus juicios (antes de volver a startS). */
+  onLoop(listener: Listener<LoopLap>): () => void {
+    return this.subscribe(this.loopListeners, listener)
   }
 
-  onSongEnd(cb: SongEndCallback): () => void {
-    this.songEndCallbacks.add(cb)
-    return () => this.songEndCallbacks.delete(cb)
+  onEnd(listener: Listener<readonly TimedJudgement[]>): () => void {
+    return this.subscribe(this.endListeners, listener)
   }
 
-  // ─── Loop principal ──────────────────────────────────────────────────────────
+  // ─── Internos ─────────────────────────────────────────────────────────────────
 
-  private unsubMidi: (() => void) | null = null
-
-  private loop = (): void => {
-    if (!this.isRunning) return
-
-    const gameTimeMs = this.currentGameTimeMs()
-
-    this.advanceNoteHead(gameTimeMs)
-    this.detectMisses(gameTimeMs)
-    this.frameCallbacks.forEach(cb => cb(gameTimeMs))
-
-    if (this.isSongFinished(gameTimeMs)) {
-      this.isRunning = false
-      this.unsubMidi?.()
-      this.songEndCallbacks.forEach(cb => cb())
-      return
-    }
-
-    this.rafId = requestAnimationFrame(this.loop)
+  private scheduleFrame(): void {
+    this.frameId = this.scheduler.request(() => {
+      this.frameId = null
+      this.tick()
+      if (this.currentPhase === 'running') this.scheduleFrame()
+    })
   }
 
-  // ─── Procesamiento de hits MIDI ──────────────────────────────────────────────
-
-  private handleHit(hit: MidiHit): void {
-    if (!this.isRunning || this.songStartTime === null) return
-
-    const hitTimeMs = hit.timestamp - this.songStartTime
-    const note = findClosestNote(hitTimeMs, hit.instrument, this.pendingNotes)
-
-    if (!note) {
-      // Golpe que no corresponde a ninguna nota — ignorar silenciosamente
-      return
-    }
-
-    this.resolvedNotes.add(note)
-    this.pendingNotes = this.pendingNotes.filter(n => n !== note)
-
-    const result = evaluateHit(hitTimeMs, note, this.latencyOffsetMs)
-    this.hitResultCallbacks.forEach(cb => cb(result))
-  }
-
-  // ─── Avance de la ventana de notas pendientes ─────────────────────────────────
-
-  /**
-   * Mueve notas desde allNotes a pendingNotes cuando entran en la ventana Good.
-   * Avanzamos el noteHead para no re-procesar notas ya ingresadas.
-   */
-  private advanceNoteHead(gameTimeMs: number): void {
-    while (this.noteHead < this.allNotes.length) {
-      const note = this.allNotes[this.noteHead]
-      // La nota entra en ventana cuando gameTimeMs está a ≤ GOOD_WINDOW_MS de ella
-      if (note.absoluteTimeMs - gameTimeMs <= GOOD_WINDOW_MS) {
-        if (!this.resolvedNotes.has(note)) {
-          this.pendingNotes.push(note)
-        }
-        this.noteHead++
-      } else {
-        break
-      }
+  private expireUntil(songT: number): void {
+    for (const miss of this.evaluator!.expire(songT)) {
+      this.record({ ...miss, t: this.notes[miss.noteIndex].t })
     }
   }
 
-  /**
-   * Detecta notas en pendingNotes que ya vencieron sin ser golpeadas → Miss.
-   */
-  private detectMisses(gameTimeMs: number): void {
-    const stillPending: NoteEvent[] = []
-
-    for (const note of this.pendingNotes) {
-      if (isNoteMissed(note.absoluteTimeMs, gameTimeMs)) {
-        this.resolvedNotes.add(note)
-        const missResult: HitResult = {
-          noteEvent: note,
-          accuracy: HitAccuracy.Miss,
-          deltaMs: gameTimeMs - note.absoluteTimeMs,
-          points: POINTS[HitAccuracy.Miss],
-        }
-        this.hitResultCallbacks.forEach(cb => cb(missResult))
-        this.missCallbacks.forEach(cb => cb(note))
-      } else {
-        stillPending.push(note)
-      }
-    }
-
-    this.pendingNotes = stillPending
+  private record(judgement: TimedJudgement): void {
+    this.log.push(judgement)
+    this.emit(this.judgementListeners, judgement)
   }
 
-  private isSongFinished(gameTimeMs: number): boolean {
-    if (!this.song || this.allNotes.length === 0) return false
-    const lastNote = this.allNotes[this.allNotes.length - 1]
-    // Termina cuando todas las notas están resueltas y la última ya pasó su ventana
-    return (
-      this.resolvedNotes.size >= this.allNotes.length &&
-      gameTimeMs > lastNote.absoluteTimeMs + GOOD_WINDOW_MS
-    )
+  private subscribe<T>(set: Set<Listener<T>>, listener: Listener<T>): () => void {
+    set.add(listener)
+    return () => set.delete(listener)
   }
 
-  private reset(): void {
-    this.noteHead = 0
-    this.pendingNotes = []
-    this.resolvedNotes = new Set()
-    this.songStartTime = null
+  private emit<T>(set: Set<Listener<T>>, value: T): void {
+    set.forEach(listener => listener(value))
   }
 }
-
-// Singleton para uso en la app
-export const gameEngine = new GameEngine()

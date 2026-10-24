@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { gameEngine } from '@/engine/GameEngine'
+import { gameEngine } from '@/engine/legacy/GameEngineV1'
 import { flattenNotes } from '@/engine/SongParser'
 import { createEffect, drawEffects, pruneEffects } from '@/renderer/EffectsRenderer'
 import { drawHUD } from '@/renderer/HUDRenderer'
