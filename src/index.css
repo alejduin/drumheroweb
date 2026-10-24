@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Reset base para app de pantalla completa */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0a0a0f;
+  color: #f3f4f6;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden; /* La app ocupa pantalla completa */
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
