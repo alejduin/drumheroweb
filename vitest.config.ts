@@ -12,5 +12,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     globals: true,
+    // Sin esto Vitest vacía los .css; el test de paridad de tokens lee theme.css?raw
+    css: { include: [/theme\.css/] },
   },
 })

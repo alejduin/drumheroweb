@@ -1,15 +1,30 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import './styles/theme.css';
+
+/* Fuentes auto-hospedadas (pesos usados en las maquetas) */
+@import '@fontsource/archivo/400.css';
+@import '@fontsource/archivo/500.css';
+@import '@fontsource/archivo/600.css';
+@import '@fontsource/archivo/700.css';
+@import '@fontsource/archivo/800.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
 
 /* Reset base para app de pantalla completa */
 * {
   box-sizing: border-box;
 }
 
+/* Modo oscuro por defecto, como las maquetas */
+:root {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  background: #0a0a0f;
-  color: #f3f4f6;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
   overflow: hidden; /* La app ocupa pantalla completa */
 }
 

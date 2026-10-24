@@ -1,0 +1,75 @@
+/*
+ * Tokens de diseño (PLAN_V2 §4.1), tomados de las maquetas de design/.
+ * Tailwind v4 genera utilidades a partir de @theme: bg-surface, text-muted, border-border…
+ * El canvas lee los mismos valores desde src/constants/theme.ts (un test verifica la paridad).
+ */
+
+@theme {
+  /* Superficies */
+  --color-bg: #0b0c10;
+  --color-surface-header: #101117;
+  --color-surface: #13141b;
+  --color-surface-2: #171922;
+  --color-surface-inset: #0e0f14;
+  --color-surface-video: #15161d;
+  --color-surface-idle: #1b1d26;
+  --color-track: #262938;
+  --color-border: #22252f;
+  --color-border-strong: #2e3240;
+  --color-border-dashed: #3a3e4d;
+
+  /* Texto */
+  --color-fg: #ecedf2;
+  --color-fg-2: #c9ccd8;
+  --color-muted: #9aa0b4;
+  --color-faint: #6b6f7e;
+
+  /* Acento (cambiable desde Settings: data-accent en <html>) */
+  --color-accent: #a78bfa;
+  --color-accent-soft: #221e35;
+  --color-on-accent: #15161c;
+
+  /* Juicios */
+  --color-perfect: #10b981;
+  --color-perfect-strong: #059669;
+  --color-perfect-fg: #34d399;
+  --color-perfect-bg: #13261f;
+  --color-perfect-border: #1e4a39;
+  --color-perfect-text: #a7f3d0;
+  --color-close: #d97706;
+  --color-close-fg: #fbbf24;
+  --color-close-bg: #2a2312;
+  --color-close-border: #5c4710;
+  --color-close-text: #fde68a;
+  --color-miss: #dc2626;
+  --color-wrong: #9aa0b4;
+
+  /* Partitura sobre papel */
+  --color-paper: #f4f2ec;
+  --color-paper-ink: #2a2c35;
+  --color-paper-future: #1c1d24;
+  --color-paper-chip: #e4e1d8;
+  --color-paper-muted: #4b4f5e;
+  --color-paper-active: #ffffff;
+
+  /* Tipografía (auto-hospedada con @fontsource) */
+  --font-sans: 'Archivo', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Radios */
+  --radius-xl: 16px;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+}
+
+/* Acentos alternativos de las maquetas; el "soft" es el acento al 15 % sobre el fondo */
+:root[data-accent='blue'] {
+  --color-accent: #60a5fa;
+  --color-accent-soft: #182333;
+}
+
+:root[data-accent='pink'] {
+  --color-accent: #f472b6;
+  --color-accent-soft: #2e1b29;
+}
