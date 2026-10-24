@@ -1,0 +1,23 @@
+services:
+  poc:
+    build:
+      context: .
+      # En WSL la red puente de Docker corta descargas largas; la del host no
+      network: host
+    image: drumhero-worker:dev
+    # Igual que en el build: la red puente de WSL deja colgadas las descargas de pesos
+    network_mode: host
+    volumes:
+      # Código montado para iterar sin reconstruir la imagen
+      - ./app:/work/app
+      - ./poc:/work/poc
+      - ./tests:/work/tests
+      - ./ruff.toml:/work/ruff.toml:ro
+      - ../shared:/shared:ro
+      - models:/models
+    environment:
+      DRUMHERO_SHARED_DIR: /shared
+      # cpu | cuda | auto
+      DRUMHERO_DEVICE: ${DRUMHERO_DEVICE:-auto}
+volumes:
+  models:
