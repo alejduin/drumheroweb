@@ -1,0 +1,172 @@
+{
+  "id": "full-kit-003",
+  "title": "Full Kit Challenge",
+  "artist": "DrumHero",
+  "difficulty": "advanced",
+  "bpm": 110,
+  "timeSignature": [4, 4],
+  "youtubeUrl": null,
+  "youtubeOffsetMs": 0,
+  "sections": [
+    { "name": "Intro", "startMeasure": 1, "endMeasure": 2 },
+    { "name": "Verse", "startMeasure": 3, "endMeasure": 6 },
+    { "name": "Chorus", "startMeasure": 7, "endMeasure": 8 }
+  ],
+  "measures": [
+    {
+      "number": 1,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "crash", "midi": 49 },
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 }
+      ]
+    },
+    {
+      "number": 2,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "tom1", "midi": 48 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "tom2", "midi": 45 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0, "instrument": "crash", "midi": 49 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "kick", "midi": 36 }
+      ]
+    },
+    {
+      "number": 3,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "ride", "midi": 51 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "ride", "midi": 51 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "ride", "midi": 51 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "ride", "midi": 51 }
+      ]
+    },
+    {
+      "number": 4,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "ride", "midi": 51 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 2, "subdivision": 0.25, "instrument": "snare_rim", "midi": 40 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "ride", "midi": 51 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "ride", "midi": 51 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0, "instrument": "ride", "midi": 51 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "kick", "midi": 36 }
+      ]
+    },
+    {
+      "number": 5,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "tom1", "midi": 48 },
+        { "beat": 3, "subdivision": 0.25, "instrument": "tom1", "midi": 48 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "tom2", "midi": 45 },
+        { "beat": 3, "subdivision": 0.75, "instrument": "tom2", "midi": 45 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 }
+      ]
+    },
+    {
+      "number": 6,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "hihat_open", "midi": 46 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0, "instrument": "crash", "midi": 49 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "kick", "midi": 36 }
+      ]
+    },
+    {
+      "number": 7,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "crash", "midi": 49 },
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0.25, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "kick", "midi": 36 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0.75, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0.25, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0.75, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "kick", "midi": 36 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 }
+      ]
+    },
+    {
+      "number": 8,
+      "notes": [
+        { "beat": 1, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 1, "subdivision": 0, "instrument": "crash", "midi": 49 },
+        { "beat": 1, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 2, "subdivision": 0, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 2, "subdivision": 0.5, "instrument": "hihat_closed", "midi": 42 },
+        { "beat": 3, "subdivision": 0, "instrument": "kick", "midi": 36 },
+        { "beat": 3, "subdivision": 0, "instrument": "tom1", "midi": 48 },
+        { "beat": 3, "subdivision": 0.25, "instrument": "tom1", "midi": 48 },
+        { "beat": 3, "subdivision": 0.5, "instrument": "tom2", "midi": 45 },
+        { "beat": 3, "subdivision": 0.75, "instrument": "tom2", "midi": 45 },
+        { "beat": 4, "subdivision": 0, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0.25, "instrument": "snare", "midi": 38 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "kick", "midi": 36 },
+        { "beat": 4, "subdivision": 0.5, "instrument": "crash", "midi": 49 }
+      ]
+    }
+  ]
+}

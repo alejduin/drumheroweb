@@ -1,17 +1,9 @@
+import type { Piece } from './chart'
+
 // ─── Instrumentos ────────────────────────────────────────────────────────────
 
-export type DrumInstrument =
-  | 'kick'
-  | 'snare'
-  | 'snare_rim'
-  | 'hihat_closed'
-  | 'hihat_open'
-  | 'hihat_pedal'
-  | 'tom1'
-  | 'tom2'
-  | 'crash'
-  | 'ride'
-  | 'ride_edge'
+// V1: alias de Piece mientras el motor v1 siga en uso (se elimina en B5)
+export type DrumInstrument = Piece
 
 // ─── Precisión de hit ────────────────────────────────────────────────────────
 
@@ -106,3 +98,4 @@ export interface UserSettings {
 export * from './chart'
 export * from './api'
 export * from './reference'
+export * from './scoring'

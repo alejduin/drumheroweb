@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import type { ReferenceHit } from '@/types'
-import { DEFAULT_PIECE_MAP, pieceForNote } from '@/midi/pieceMap'
 import {
   EMPTY_RECORDING,
   buildReferenceFile,
@@ -115,15 +114,5 @@ describe('parseRecordingDraft', () => {
     expect(parseRecordingDraft(null)).toBeNull()
     expect(parseRecordingDraft('{no es json')).toBeNull()
     expect(parseRecordingDraft('{"takes":[],"hits":[{"t":"1"}]}')).toBeNull()
-  })
-})
-
-describe('DEFAULT_PIECE_MAP', () => {
-  it('incluye tom3 = 43 y el borde del ride como ride', () => {
-    expect(pieceForNote(43)).toBe('tom3')
-    expect(pieceForNote(59)).toBe('ride')
-    expect(pieceForNote(51)).toBe('ride')
-    expect(pieceForNote(60)).toBeUndefined()
-    expect(Object.keys(DEFAULT_PIECE_MAP)).toHaveLength(12)
   })
 })

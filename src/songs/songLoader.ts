@@ -1,15 +1,16 @@
-import { parseSong } from '@/engine/SongParser'
-import type { SongData } from '@/types'
+import type { ChartV2 } from '@/types'
 
 /**
- * Carga y parsea un archivo JSON de canción desde /public/songs/.
- * Lanza un error si el fetch falla o el JSON es inválido.
+ * Carga y valida un chart v2 desde /public/songs/.
+ * Lanza si el fetch falla o el chart es inválido (ChartParseError).
  */
-export async function loadSong(id: string): Promise<SongData> {
+export async function loadChart(id: string): Promise<ChartV2> {
   const response = await fetch(`/songs/${id}.json`)
   if (!response.ok) {
     throw new Error(`No se pudo cargar la canción "${id}": ${response.status}`)
   }
   const raw: unknown = await response.json()
-  return parseSong(raw)
+  // ajv + schema van en un chunk aparte: solo se descargan al cargar la primera canción
+  const { parseChart } = await import('@/chart/ChartParser')
+  return parseChart(raw)
 }

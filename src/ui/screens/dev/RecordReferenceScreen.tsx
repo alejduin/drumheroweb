@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import type { ReferenceHit } from '@/types'
 import { BufferPlayer } from '@/audio/BufferPlayer'
 import { midiManager } from '@/midi/MidiManager'
-import { pieceForNote } from '@/midi/pieceMap'
+import { resolveInstrument } from '@/midi/midiMap'
 import {
   EMPTY_RECORDING,
   buildReferenceFile,
@@ -103,7 +103,7 @@ export function RecordReferenceScreen() {
     const unsubNotes = midiManager.onNoteOn(noteOn => {
       const player = playerRef.current
       if (!player?.isPlaying || takeStartRef.current === null) return
-      const piece = pieceForNote(noteOn.note)
+      const piece = resolveInstrument(noteOn.note)
       if (!piece) {
         setUnmapped(n => n + 1)
         return

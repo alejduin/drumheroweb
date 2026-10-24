@@ -1,190 +1,862 @@
 {
+  "version": 2,
   "id": "hihat-groove-002",
   "title": "Hi-Hat Groove",
   "artist": "DrumHero",
-  "difficulty": "intermediate",
   "bpm": 95,
   "timeSignature": [4, 4],
+  "durationS": 20.210526315789473,
+  "audioUrl": null,
+  "stems": null,
+  "audioSha256": null,
   "youtubeUrl": null,
   "youtubeOffsetMs": 0,
-  "sections": [
-    { "name": "Intro",  "startMeasure": 1, "endMeasure": 2 },
-    { "name": "Groove", "startMeasure": 3, "endMeasure": 8 }
-  ],
-  "measures": [
-    {
-      "number": 1,
-      "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 }
-      ]
+  "grid": {
+    "beats": [
+      0, 0.631578947368421, 1.263157894736842, 1.894736842105263, 2.526315789473684,
+      3.1578947368421053, 3.789473684210526, 4.421052631578947, 5.052631578947368,
+      5.684210526315789, 6.315789473684211, 6.947368421052631, 7.578947368421052, 8.210526315789473,
+      8.842105263157894, 9.473684210526315, 10.105263157894736, 10.736842105263158,
+      11.368421052631579, 12, 12.631578947368421, 13.26315789473684, 13.894736842105262,
+      14.526315789473683, 15.157894736842104, 15.789473684210526, 16.421052631578945,
+      17.052631578947366, 17.684210526315788, 18.31578947368421, 18.94736842105263,
+      19.57894736842105
+    ],
+    "downbeats": [
+      0, 2.526315789473684, 5.052631578947368, 7.578947368421052, 10.105263157894736,
+      12.631578947368421, 15.157894736842104, 17.684210526315788
+    ]
+  },
+  "difficulties": {
+    "basic": {
+      "notes": []
     },
-    {
-      "number": 2,
-      "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "crash",       "midi": 49 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 }
-      ]
+    "intermediate": {
+      "notes": []
     },
-    {
-      "number": 3,
+    "full": {
       "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_open",  "midi": 46 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "kick",        "midi": 36 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 }
-      ]
-    },
-    {
-      "number": 4,
-      "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "crash",       "midi": 49 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "kick",        "midi": 36 }
-      ]
-    },
-    {
-      "number": 5,
-      "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_open",  "midi": 46 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 }
-      ]
-    },
-    {
-      "number": 6,
-      "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 }
-      ]
-    },
-    {
-      "number": 7,
-      "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 1, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_open",  "midi": 46 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.25, "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0.75, "instrument": "hihat_closed","midi": 42 }
-      ]
-    },
-    {
-      "number": 8,
-      "notes": [
-        { "beat": 1, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 1, "subdivision": 0,    "instrument": "crash",       "midi": 49 },
-        { "beat": 1, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 2, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 2, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0,    "instrument": "kick",        "midi": 36 },
-        { "beat": 3, "subdivision": 0,    "instrument": "hihat_closed","midi": 42 },
-        { "beat": 3, "subdivision": 0.5,  "instrument": "hihat_closed","midi": 42 },
-        { "beat": 4, "subdivision": 0,    "instrument": "snare",       "midi": 38 },
-        { "beat": 4, "subdivision": 0,    "instrument": "crash",       "midi": 49 },
-        { "beat": 4, "subdivision": 0.5,  "instrument": "kick",        "midi": 36 }
+        {
+          "t": 0,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0.15789473684210525,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0.3157894736842105,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0.47368421052631576,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0.631578947368421,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0.631578947368421,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0.7894736842105262,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 0.9473684210526315,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.105263157894737,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.263157894736842,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.263157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.4210526315789473,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.5789473684210524,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.736842105263158,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.894736842105263,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 1.894736842105263,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 2.052631578947368,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 2.210526315789474,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 2.3684210526315788,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 2.526315789473684,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 2.526315789473684,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 2.6842105263157894,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 2.8421052631578947,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 3,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 3.157894736842105,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 3.157894736842105,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 3.473684210526316,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 3.789473684210526,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 3.789473684210526,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 3.947368421052632,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 4.105263157894736,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 4.105263157894736,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 4.263157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 4.421052631578948,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 4.421052631578948,
+          "piece": "crash",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 4.7368421052631575,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.052631578947368,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.052631578947368,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.2105263157894735,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.368421052631579,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.526315789473684,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.684210526315789,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.684210526315789,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 5.842105263157895,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6.157894736842105,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6.31578947368421,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6.31578947368421,
+          "piece": "hihat_open",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6.631578947368421,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6.789473684210526,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6.947368421052632,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 6.947368421052632,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.105263157894736,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.263157894736842,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.263157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.421052631578948,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.578947368421052,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.578947368421052,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.7368421052631575,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 7.894736842105264,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.052631578947368,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.210526315789473,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.210526315789473,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.368421052631579,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.526315789473683,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.68421052631579,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.842105263157896,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 8.842105263157896,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 9,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 9.157894736842104,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 9.31578947368421,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 9.473684210526315,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 9.473684210526315,
+          "piece": "crash",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 9.789473684210527,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 10.105263157894736,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 10.105263157894736,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 10.263157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 10.421052631578947,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 10.578947368421051,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 10.736842105263158,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 10.736842105263158,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 11.052631578947368,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 11.368421052631579,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 11.368421052631579,
+          "piece": "hihat_open",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 11.68421052631579,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 12,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 12,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 12.31578947368421,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 12.63157894736842,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 12.63157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 12.789473684210527,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 12.947368421052632,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.105263157894736,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.263157894736842,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.263157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.421052631578947,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.578947368421051,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.736842105263158,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.894736842105264,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 13.894736842105264,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 14.210526315789473,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 14.210526315789473,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 14.526315789473683,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 14.526315789473683,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 14.842105263157896,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 15.157894736842104,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 15.157894736842104,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 15.31578947368421,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 15.473684210526315,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 15.63157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 15.789473684210527,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 15.789473684210527,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 16.105263157894736,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 16.421052631578945,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 16.421052631578945,
+          "piece": "hihat_open",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 16.736842105263158,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 17.052631578947366,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 17.052631578947366,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 17.210526315789473,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 17.36842105263158,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 17.526315789473685,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 17.68421052631579,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 17.68421052631579,
+          "piece": "crash",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 18,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 18.31578947368421,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 18.31578947368421,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 18.63157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 18.94736842105263,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 18.94736842105263,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 19.263157894736842,
+          "piece": "hihat_closed",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 19.578947368421055,
+          "piece": "snare",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 19.578947368421055,
+          "piece": "crash",
+          "velocity": 90,
+          "confidence": 1
+        },
+        {
+          "t": 19.894736842105264,
+          "piece": "kick",
+          "velocity": 90,
+          "confidence": 1
+        }
       ]
     }
-  ]
+  },
+  "sections": [
+    {
+      "name": "Intro",
+      "startMeasure": 1,
+      "endMeasure": 2
+    },
+    {
+      "name": "Groove",
+      "startMeasure": 3,
+      "endMeasure": 8
+    }
+  ],
+  "source": {
+    "kind": "builtin",
+    "createdAt": "2026-10-24T00:00:00.000Z"
+  }
 }

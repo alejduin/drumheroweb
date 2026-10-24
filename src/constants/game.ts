@@ -65,6 +65,7 @@ export const LANES: DrumInstrument[] = [
   'snare',
   'tom1',
   'tom2',
+  'tom3',
   'kick',
 ]
 
@@ -79,9 +80,9 @@ export const INSTRUMENT_COLORS: Record<DrumInstrument, string> = {
   hihat_pedal: '#fbbf24',
   tom1: '#a855f7',
   tom2: '#c084fc',
+  tom3: '#d8b4fe',
   crash: '#22c55e',
   ride: '#4ade80',
-  ride_edge: '#86efac',
 }
 
 // ─── Colores de feedback por precisión ───────────────────────────────────────

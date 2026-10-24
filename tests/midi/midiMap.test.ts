@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_MIDI_MAP, invertMidiMap, resolveInstrument } from '@/midi/midiMap'
+import { DEFAULT_MIDI_MAP, invertMidiMap, migrateMidiMap, resolveInstrument } from '@/midi/midiMap'
 
 describe('DEFAULT_MIDI_MAP', () => {
   it('contiene todos los instrumentos Roland TD-02KV', () => {
@@ -13,6 +13,7 @@ describe('DEFAULT_MIDI_MAP', () => {
     expect(instruments).toContain('ride')
     expect(instruments).toContain('tom1')
     expect(instruments).toContain('tom2')
+    expect(instruments).toContain('tom3')
   })
 
   it('mapea las notas MIDI correctas según el estándar Roland', () => {
@@ -26,7 +27,9 @@ describe('DEFAULT_MIDI_MAP', () => {
     expect(DEFAULT_MIDI_MAP[45]).toBe('tom2')
     expect(DEFAULT_MIDI_MAP[49]).toBe('crash')
     expect(DEFAULT_MIDI_MAP[51]).toBe('ride')
-    expect(DEFAULT_MIDI_MAP[59]).toBe('ride_edge')
+    expect(DEFAULT_MIDI_MAP[43]).toBe('tom3')
+    expect(DEFAULT_MIDI_MAP[59]).toBe('ride') // borde del ride = ride (D5)
+    expect(Object.keys(DEFAULT_MIDI_MAP)).toHaveLength(12)
   })
 })
 
@@ -56,6 +59,7 @@ describe('invertMidiMap', () => {
     expect(inverted['kick']).toBe(36)
     expect(inverted['snare']).toBe(38)
     expect(inverted['crash']).toBe(49)
+    expect(inverted['ride']).toBe(51) // 51 y 59 → ride: gana la menor
   })
 
   it('maneja un mapa personalizado', () => {
@@ -63,5 +67,16 @@ describe('invertMidiMap', () => {
     const inverted = invertMidiMap(custom)
     expect(inverted['kick']).toBe(60)
     expect(inverted['snare']).toBe(62)
+  })
+})
+
+describe('migrateMidiMap', () => {
+  it('convierte ride_edge en ride y agrega tom3 si falta', () => {
+    const v1 = { 36: 'kick', 51: 'ride', 59: 'ride_edge', 99: 'cowbell' }
+    expect(migrateMidiMap(v1)).toEqual({ 36: 'kick', 51: 'ride', 59: 'ride', 43: 'tom3' })
+  })
+
+  it('respeta una asignación propia de la nota 43', () => {
+    expect(migrateMidiMap({ 43: 'tom2' })).toEqual({ 43: 'tom2' })
   })
 })

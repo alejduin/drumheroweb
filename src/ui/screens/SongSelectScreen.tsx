@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { loadSong } from '@/songs/songLoader'
+import { chartToSongData } from '@/chart/legacy'
+import { loadChart } from '@/songs/songLoader'
 import { SONG_LIBRARY } from '@/songs/songLibrary'
 import type { SongMeta } from '@/songs/songLibrary'
 import { useProgressStore } from '@/store/progressStore'
@@ -31,8 +32,8 @@ export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps)
     setLoading(meta.id)
     setError(null)
     try {
-      const song = await loadSong(meta.id)
-      onSongReady(song)
+      const chart = await loadChart(meta.id)
+      onSongReady(chartToSongData(chart))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar la canción')
     } finally {
