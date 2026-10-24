@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write 'src/**/*.{ts,tsx}' 'tests/**/*.ts' 'shared/**/*.{json,yaml}'",
-    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'tests/**/*.ts' 'shared/**/*.{json,yaml}'",
+    "format": "prettier --write 'src/**/*.{ts,tsx}' 'tests/**/*.{ts,tsx}' 'shared/**/*.{json,yaml}'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'tests/**/*.{ts,tsx}' 'shared/**/*.{json,yaml}'",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
@@ -22,7 +22,7 @@
       "eslint --max-warnings 0",
       "prettier --write"
     ],
-    "tests/**/*.ts": [
+    "tests/**/*.{ts,tsx}": [
       "prettier --write"
     ],
     "shared/**/*.{json,yaml}": [

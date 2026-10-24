@@ -10,7 +10,16 @@ export interface MidiDevice {
   manufacturer: string
 }
 
+/** noteOn crudo (cualquier canal y nota, velocity > 0), sin pasar por el mapa. */
+export interface MidiNoteOn {
+  note: number
+  velocity: number
+  channel: number // 0–15
+  timestamp: number // MIDIMessageEvent.timeStamp (base performance.now(), ms)
+}
+
 type HitCallback = (hit: MidiHit) => void
+type NoteOnCallback = (noteOn: MidiNoteOn) => void
 type StateCallback = (state: MidiConnectionState) => void
 type DevicesCallback = (devices: MidiDevice[]) => void
 
@@ -29,6 +38,7 @@ class MidiManager {
   private connectionState: MidiConnectionState = 'disconnected'
 
   private hitCallbacks = new Set<HitCallback>()
+  private noteOnCallbacks = new Set<NoteOnCallback>()
   private stateCallbacks = new Set<StateCallback>()
   private devicesCallbacks = new Set<DevicesCallback>()
 
@@ -121,6 +131,17 @@ class MidiManager {
     return () => this.hitCallbacks.delete(callback)
   }
 
+  /** Recibe cada noteOn crudo (grabación de referencias, calibración). */
+  onNoteOn(callback: NoteOnCallback): () => void {
+    this.noteOnCallbacks.add(callback)
+    return () => this.noteOnCallbacks.delete(callback)
+  }
+
+  /** Nombre del dispositivo de entrada seleccionado. */
+  getSelectedDeviceName(): string | null {
+    return this.selectedInput?.name ?? null
+  }
+
   /** Recibe cambios en el estado de conexión. */
   onStateChange(callback: StateCallback): () => void {
     this.stateCallbacks.add(callback)
@@ -140,17 +161,10 @@ class MidiManager {
   // ─── Procesamiento de mensajes ──────────────────────────────────────────────
 
   private handleMessage(event: MIDIMessageEvent): void {
-    const data = event.data
-    if (data && data.length >= 3) {
-      const status = data[0]
-      const note = data[1]
-      const velocity = data[2]
-      const messageType = status & 0xf0
-      const channel = status & 0x0f
-      // Debug: log todos los mensajes MIDI entrantes
-      console.log(
-        `[MIDI] status=0x${status.toString(16).toUpperCase()} type=0x${messageType.toString(16).toUpperCase()} ch=${channel + 1} note=${note} vel=${velocity}`,
-      )
+    // Sin console.log por mensaje: añade latencia en el camino crítico del golpe
+    if (this.noteOnCallbacks.size > 0) {
+      const noteOn = parseNoteOn(event)
+      if (noteOn) this.noteOnCallbacks.forEach(cb => cb(noteOn))
     }
 
     const hit = parseMidiMessage(event, this.midiMap)
@@ -167,6 +181,20 @@ class MidiManager {
   private notifyDevices(): void {
     const devices = this.getDevices()
     this.devicesCallbacks.forEach(cb => cb(devices))
+  }
+}
+
+/** noteOn con velocity > 0 en cualquier canal; null para todo lo demás. Función pura. */
+export function parseNoteOn(event: MIDIMessageEvent): MidiNoteOn | null {
+  const data = event.data
+  if (!data || data.length < 3) return null
+  const status = data[0]
+  if ((status & 0xf0) !== 0x90 || data[2] < MIN_VELOCITY) return null
+  return {
+    note: data[1],
+    velocity: data[2],
+    channel: status & 0x0f,
+    timestamp: event.timeStamp ?? performance.now(),
   }
 }
 

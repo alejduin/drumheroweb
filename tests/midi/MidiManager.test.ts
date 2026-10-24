@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { parseMidiMessage } from '@/midi/MidiManager'
+import { parseMidiMessage, parseNoteOn } from '@/midi/MidiManager'
 import { DEFAULT_MIDI_MAP } from '@/midi/midiMap'
 
 // ─── Helper: construir un MIDIMessageEvent falso ──────────────────────────────
@@ -86,5 +86,22 @@ describe('parseMidiMessage', () => {
     // timeStamp = 1000 en nuestro helper, así que NO debe usar performance.now()
     const hit = parseMidiMessage(event, DEFAULT_MIDI_MAP)
     expect(hit?.timestamp).toBe(1000)
+  })
+})
+
+describe('parseNoteOn', () => {
+  it('acepta noteOn de cualquier canal y nota, sin mapa', () => {
+    expect(parseNoteOn(makeMidiEvent(NOTE_ON_CH10, 43, 90))).toEqual({
+      note: 43,
+      velocity: 90,
+      channel: 9,
+      timestamp: 1000,
+    })
+    expect(parseNoteOn(makeMidiEvent(NOTE_ON_CH1, 60, 64))?.channel).toBe(0)
+  })
+
+  it('ignora noteOff y noteOn con velocity 0', () => {
+    expect(parseNoteOn(makeMidiEvent(NOTE_OFF_CH10, 36, 64))).toBeNull()
+    expect(parseNoteOn(makeMidiEvent(NOTE_ON_CH10, 36, 0))).toBeNull()
   })
 })
