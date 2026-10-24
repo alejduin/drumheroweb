@@ -67,22 +67,14 @@ export default function App() {
       )}
 
       {screen === 'song-select' && (
-        <SongSelectScreen
-          onSongReady={handleSongReady}
-          onBack={() => setScreen('home')}
-        />
+        <SongSelectScreen onSongReady={handleSongReady} onBack={() => setScreen('home')} />
       )}
 
       {screen === 'game' && selectedSong && (
-        <GameScreen
-          song={selectedSong}
-          onStop={handleBackToMenu}
-        />
+        <GameScreen song={selectedSong} onStop={handleBackToMenu} />
       )}
 
-      {screen === 'settings' && (
-        <SettingsScreen onBack={() => setScreen('home')} />
-      )}
+      {screen === 'settings' && <SettingsScreen onBack={() => setScreen('home')} />}
     </div>
   )
 }

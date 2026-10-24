@@ -44,24 +44,21 @@ export function ResultsScreen({ song, onPlayAgain, onMenu }: ResultsScreenProps)
 
       {/* Score */}
       <div className="text-center">
-        <div className="text-6xl font-black text-white tabular-nums">
-          {score.toLocaleString()}
-        </div>
+        <div className="text-6xl font-black text-white tabular-nums">{score.toLocaleString()}</div>
         <div className="text-gray-400 text-sm mt-1">PUNTUACIÓN</div>
       </div>
 
       {/* Desglose de precisión */}
       <div className="w-full max-w-sm grid grid-cols-4 gap-2 text-center">
         <AccuracyCell label="PERFECT" count={accuracy.perfect} color="text-yellow-400" />
-        <AccuracyCell label="GREAT"   count={accuracy.great}   color="text-green-400" />
-        <AccuracyCell label="GOOD"    count={accuracy.good}    color="text-yellow-300" />
-        <AccuracyCell label="MISS"    count={accuracy.miss}    color="text-red-400" />
+        <AccuracyCell label="GREAT" count={accuracy.great} color="text-green-400" />
+        <AccuracyCell label="GOOD" count={accuracy.good} color="text-yellow-300" />
+        <AccuracyCell label="MISS" count={accuracy.miss} color="text-red-400" />
       </div>
 
       {/* Ratio de aciertos */}
       <div className="text-gray-300 text-lg">
-        {hits} / {total} notas ·{' '}
-        <span className="font-bold text-white">{pct}%</span>
+        {hits} / {total} notas · <span className="font-bold text-white">{pct}%</span>
       </div>
 
       {/* Botones */}
@@ -83,15 +80,7 @@ export function ResultsScreen({ song, onPlayAgain, onMenu }: ResultsScreenProps)
   )
 }
 
-function AccuracyCell({
-  label,
-  count,
-  color,
-}: {
-  label: string
-  count: number
-  color: string
-}) {
+function AccuracyCell({ label, count, color }: { label: string; count: number; color: string }) {
   return (
     <div className="bg-gray-900 rounded-lg p-3">
       <div className={`text-xl font-bold ${color}`}>{count}</div>

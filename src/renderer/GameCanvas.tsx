@@ -77,10 +77,8 @@ export function GameCanvas({ song, scrollSpeed = 1 }: GameCanvasProps) {
       drawEffects(ctx, effectsRef.current, width, height)
 
       // 3. HUD — leído imperativamente del store, sin re-render de React
-      const { score, combo, multiplier, lastAccuracy, songDurationMs } =
-        useGameStore.getState()
-      const songProgressRatio =
-        songDurationMs > 0 ? Math.min(1, gameTimeMs / songDurationMs) : 0
+      const { score, combo, multiplier, lastAccuracy, songDurationMs } = useGameStore.getState()
+      const songProgressRatio = songDurationMs > 0 ? Math.min(1, gameTimeMs / songDurationMs) : 0
 
       drawHUD(ctx, { score, combo, multiplier, lastAccuracy, songProgressRatio }, width)
     })
@@ -108,10 +106,5 @@ export function GameCanvas({ song, scrollSpeed = 1 }: GameCanvasProps) {
     return () => observer.disconnect()
   }, [])
 
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ display: 'block', width: '100%', height: '100%' }}
-    />
-  )
+  return <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
 }

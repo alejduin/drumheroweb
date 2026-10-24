@@ -88,7 +88,8 @@ export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps)
                 ) : best ? (
                   <>
                     <span className="text-yellow-400 font-bold">
-                      {'★'.repeat(best.stars)}{'☆'.repeat(5 - best.stars)}
+                      {'★'.repeat(best.stars)}
+                      {'☆'.repeat(5 - best.stars)}
                     </span>
                     <span className="text-gray-300 text-sm font-mono">
                       {best.score.toLocaleString()}

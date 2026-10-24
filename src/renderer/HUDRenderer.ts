@@ -13,11 +13,7 @@ export interface HUDData {
  * Dibuja el HUD sobre el canvas: score, combo, multiplicador, barra de progreso.
  * No limpia el canvas — se llama después de NoteRenderer.
  */
-export function drawHUD(
-  ctx: CanvasRenderingContext2D,
-  data: HUDData,
-  width: number,
-): void {
+export function drawHUD(ctx: CanvasRenderingContext2D, data: HUDData, width: number): void {
   drawProgressBar(ctx, data.songProgressRatio, width)
   drawScore(ctx, data.score, width)
   drawCombo(ctx, data.combo, data.multiplier, data.lastAccuracy)
@@ -25,11 +21,7 @@ export function drawHUD(
 
 // ─── Barra de progreso (top) ──────────────────────────────────────────────────
 
-function drawProgressBar(
-  ctx: CanvasRenderingContext2D,
-  ratio: number,
-  width: number,
-): void {
+function drawProgressBar(ctx: CanvasRenderingContext2D, ratio: number, width: number): void {
   const barHeight = 3
 
   ctx.fillStyle = 'rgba(255,255,255,0.1)'
@@ -41,11 +33,7 @@ function drawProgressBar(
 
 // ─── Score (top right) ────────────────────────────────────────────────────────
 
-function drawScore(
-  ctx: CanvasRenderingContext2D,
-  score: number,
-  width: number,
-): void {
+function drawScore(ctx: CanvasRenderingContext2D, score: number, width: number): void {
   ctx.textAlign = 'right'
   ctx.textBaseline = 'top'
 

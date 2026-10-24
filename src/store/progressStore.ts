@@ -19,11 +19,7 @@ interface ProgressStore {
    * Guarda el score de una partida terminada.
    * Solo reemplaza si supera el mejor score existente.
    */
-  saveSongScore(
-    songId: string,
-    score: number,
-    accuracy: Record<HitAccuracy, number>,
-  ): void
+  saveSongScore(songId: string, score: number, accuracy: Record<HitAccuracy, number>): void
 
   getBestScore(songId: string): SongScore | null
   clearAll(): void

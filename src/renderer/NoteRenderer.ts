@@ -102,11 +102,7 @@ function formatInstrumentLabel(instrument: string): string {
 
 // ─── Línea de timing ──────────────────────────────────────────────────────────
 
-function drawTimingLine(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  height: number,
-): void {
+function drawTimingLine(ctx: CanvasRenderingContext2D, x: number, height: number): void {
   ctx.strokeStyle = TIMING_LINE_COLOR
   ctx.lineWidth = TIMING_LINE_WIDTH
   ctx.shadowColor = TIMING_LINE_COLOR

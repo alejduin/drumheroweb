@@ -9,7 +9,9 @@ export function BrowserWarning() {
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-yellow-900/95 border-t border-yellow-700 text-yellow-100 flex items-start gap-3">
-      <span className="text-2xl shrink-0" aria-hidden="true">⚠</span>
+      <span className="text-2xl shrink-0" aria-hidden="true">
+        ⚠
+      </span>
       <div>
         <p className="font-bold">Navegador no compatible</p>
         <p className="text-sm text-yellow-300 mt-0.5">

@@ -36,10 +36,7 @@ export class Metronome {
     // Pequeño delay inicial para evitar click inmediato al arrancar
     this.nextBeatTime = this.audioCtx.currentTime + 0.05
 
-    this.schedulerId = setInterval(
-      () => this.schedule(),
-      Metronome.SCHEDULER_INTERVAL_MS,
-    )
+    this.schedulerId = setInterval(() => this.schedule(), Metronome.SCHEDULER_INTERVAL_MS)
   }
 
   stop(): void {

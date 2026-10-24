@@ -30,7 +30,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 max-w-lg">
-
         {/* Latencia MIDI */}
         <section>
           <h3 className="text-gray-400 text-xs uppercase tracking-widest mb-4">MIDI</h3>
@@ -76,10 +75,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               />
             </SettingRow>
 
-            <SettingRow
-              label="Volumen samples"
-              value={`${Math.round(sampleVolume * 100)}%`}
-            >
+            <SettingRow label="Volumen samples" value={`${Math.round(sampleVolume * 100)}%`}>
               <input
                 type="range"
                 min={0}
@@ -117,7 +113,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             </div>
           </SettingRow>
         </section>
-
       </div>
     </div>
   )
