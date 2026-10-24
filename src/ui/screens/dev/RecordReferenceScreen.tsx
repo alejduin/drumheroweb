@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import type { ReferenceHit } from '@/types'
-import { BufferPlayer } from '@/audio/BufferPlayer'
+import { StemPlayer } from '@/audio/StemPlayer'
 import { midiManager } from '@/midi/MidiManager'
 import { resolveInstrument } from '@/midi/midiMap'
 import {
@@ -64,7 +64,7 @@ function saveDraft(songId: string, state: RecordingState): void {
 
 export function RecordReferenceScreen() {
   const ctxRef = useRef<AudioContext | null>(null)
-  const playerRef = useRef<BufferPlayer | null>(null)
+  const playerRef = useRef<StemPlayer | null>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
 
@@ -257,7 +257,9 @@ export function RecordReferenceScreen() {
       const data = await file.arrayBuffer()
       const sha256 = await sha256Hex(data.slice(0))
       const buffer = await ctxRef.current.decodeAudioData(data)
-      const player = new BufferPlayer(ctxRef.current, buffer)
+      const player = new StemPlayer(ctxRef.current, [
+        { buffer, output: ctxRef.current.destination },
+      ])
       player.onEnded(() => {
         finishTake()
         setPlaying(false)

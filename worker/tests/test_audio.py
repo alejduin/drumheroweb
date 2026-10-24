@@ -1,3 +1,5 @@
+import subprocess
+
 import numpy as np
 import pytest
 import soundfile as sf
@@ -42,6 +44,56 @@ def test_decode_rejects_garbage(tmp_path):
 def test_probe_duration(groove_wav):
     path, original = groove_wav
     assert probe_duration_s(path) == pytest.approx(original.shape[1] / SAMPLE_RATE, abs=0.01)
+
+
+def best_lag_samples(reference: np.ndarray, other: np.ndarray, max_lag: int = SAMPLE_RATE // 100) -> int:
+    """Desfase (muestras) que maximiza la correlación de `other` contra `reference`."""
+    a, b = to_mono(reference), to_mono(other)
+    n = min(len(a), len(b))
+    a, b = a[:n], b[:n]
+    lags = range(-max_lag, max_lag + 1)
+    scores = [np.dot(a[max_lag:-max_lag], np.roll(b, -lag)[max_lag:-max_lag]) for lag in lags]
+    return list(lags)[int(np.argmax(scores))]
+
+
+def _encode_mp3(audio: np.ndarray, path) -> None:
+    wav = path.with_suffix(".wav")
+    sf.write(wav, audio.T, SAMPLE_RATE, subtype="FLOAT")
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-i", str(wav), "-c:a", "libmp3lame", "-b:a", "192k", str(path)],
+        check=True,
+    )
+
+
+def test_stems_from_mp3_align_with_original(tmp_path):
+    """B4/D14: stems (Opus) de un MP3 quedan alineados ≤ 1 ms con el MP3 decodificado y con la fuente.
+
+    El navegador reproduce el MP3 original (fallback) o los stems: ambos deben empezar en la
+    misma muestra. ffmpeg recorta el encoder delay del MP3 con la cabecera LAME, como Chrome.
+    """
+    groove = make_groove(seconds=4.0)
+    mp3 = tmp_path / "song.mp3"
+    _encode_mp3(groove.mix, mp3)
+
+    decoded = decode(mp3)
+    # Duración: el MP3 no agrega silencio inicial (encoder delay recortado)
+    assert abs(decoded.shape[1] - groove.mix.shape[1]) <= SAMPLE_RATE // 1000
+    assert abs(best_lag_samples(groove.mix, decoded)) <= SAMPLE_RATE // 1000
+
+    # Separación simulada como en separate.py: backing = mezcla − batería (residual)
+    drums = groove.drums[:, : decoded.shape[1]]
+    backing = decoded[:, : drums.shape[1]] - drums
+    for name, stem in (("drums", drums), ("backing", backing)):
+        stem_back = decode(encode_opus(stem, tmp_path / f"{name}.ogg"))
+        lag = best_lag_samples(stem, stem_back)
+        assert abs(lag) <= SAMPLE_RATE // 1000, f"{name}: desfase de {lag} muestras"
+
+    # Batería + backing en Opus reconstruyen el MP3 sin desfase
+    summed = (
+        decode(tmp_path / "drums.ogg")[:, : drums.shape[1]]
+        + decode(tmp_path / "backing.ogg")[:, : drums.shape[1]]
+    )
+    assert abs(best_lag_samples(decoded, summed)) <= SAMPLE_RATE // 1000
 
 
 def test_opus_stem_stays_aligned(tmp_path, groove_wav):
