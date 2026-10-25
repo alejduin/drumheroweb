@@ -1,11 +1,13 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import type { SongBundle } from '@/game/GameSession'
 import { builtinBundle, localAnalysisBundle } from '@/songs/songBundle'
 import { loadChart } from '@/songs/songLoader'
 import { SONG_LIBRARY } from '@/songs/songLibrary'
 import type { SongMeta } from '@/songs/songLibrary'
+import { useLibraryStore } from '@/store/libraryStore'
 import { useProgressStore } from '@/store/progressStore'
+import { LibrarySongRow } from '@/ui/library/LibrarySongRow'
 import { Button, Panel, Stars } from '@/ui/primitives'
 
 const LEVEL_LABEL: Record<SongMeta['difficulty'], string> = {
@@ -14,22 +16,41 @@ const LEVEL_LABEL: Record<SongMeta['difficulty'], string> = {
   advanced: 'Avanzado',
 }
 
-interface SongSelectScreenProps {
-  onSongReady: (bundle: SongBundle) => void
+interface LibraryScreenProps {
+  /** songId solo para las canciones importadas (para marcar la fecha de juego). */
+  onSongReady: (bundle: SongBundle, songId: string | null) => void
+  onImport: () => void
+  /** Abre Importar con el progreso de un análisis en curso. */
+  onOpenImport: (songId: string) => void
   onBack: () => void
 }
 
-export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps) {
+/** Biblioteca: canciones importadas (IndexedDB) + incluidas + análisis local. */
+export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: LibraryScreenProps) {
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const bestScores = useProgressStore(s => s.bestScores)
+  const songs = useLibraryStore(s => s.songs)
+  const loaded = useLibraryStore(s => s.loaded)
+  const trackers = useLibraryStore(s => s.trackers)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  async function run(key: string, load: () => Promise<SongBundle>) {
+  useEffect(() => {
+    if (!useLibraryStore.getState().loaded) {
+      useLibraryStore
+        .getState()
+        .load()
+        .catch((e: unknown) =>
+          setError(`No se pudo abrir la biblioteca: ${e instanceof Error ? e.message : String(e)}`),
+        )
+    }
+  }, [])
+
+  async function run(key: string, load: () => Promise<SongBundle>, songId: string | null = null) {
     setLoading(key)
     setError(null)
     try {
-      onSongReady(await load())
+      onSongReady(await load(), songId)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar la canción')
     } finally {
@@ -49,7 +70,10 @@ export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps)
         <Button size="sm" onClick={onBack}>
           ← Volver
         </Button>
-        <h1 className="text-[17px] font-bold">Elegir canción</h1>
+        <h1 className="flex-1 text-[17px] font-bold">Biblioteca</h1>
+        <Button size="sm" variant="primary" onClick={onImport}>
+          + Importar canción
+        </Button>
       </header>
 
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto p-6">
@@ -61,6 +85,42 @@ export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps)
             {error}
           </p>
         )}
+
+        <Panel title="Mis canciones" aside="guardadas en este navegador · se juegan sin red">
+          {loaded && songs.length === 0 && (
+            <div className="flex flex-col items-start gap-3 rounded-md bg-surface-2 p-4">
+              <p className="text-sm text-fg-2">
+                Todavía no importaste canciones. Sube un MP3 y la IA genera la partitura.
+              </p>
+              <Button variant="primary" onClick={onImport}>
+                Importar canción
+              </Button>
+            </div>
+          )}
+          {songs.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {songs.map(song => (
+                <LibrarySongRow
+                  key={song.id}
+                  song={song}
+                  tracker={trackers[song.id] ?? null}
+                  busy={loading === song.id}
+                  onPlay={() =>
+                    void run(song.id, () => useLibraryStore.getState().bundle(song.id), song.id)
+                  }
+                  onOpen={() => onOpenImport(song.id)}
+                  onRetry={() => useLibraryStore.getState().retry(song.id)}
+                  onRemove={() => {
+                    const verb = song.status === 'analyzing' ? 'Cancelar el análisis de' : 'Borrar'
+                    if (window.confirm(`${verb} «${song.title}»?`)) {
+                      void useLibraryStore.getState().cancel(song.id)
+                    }
+                  }}
+                />
+              ))}
+            </ul>
+          )}
+        </Panel>
 
         <Panel title="Incluidas" aside="sin audio: suena una pista silenciosa">
           {SONG_LIBRARY.map(meta => {
@@ -98,7 +158,7 @@ export function SongSelectScreen({ onSongReady, onBack }: SongSelectScreenProps)
           })}
         </Panel>
 
-        <Panel title="Análisis local" aside="hasta que llegue la biblioteca">
+        <Panel title="Análisis local" aside="carpetas de worker/poc">
           <p className="text-xs text-fg-2">
             Elige los archivos de una carpeta de <code className="font-mono">worker/poc/out/…</code>
             : chart.json, drums.ogg, backing.ogg y peaks.json (y el MP3 original, opcional).

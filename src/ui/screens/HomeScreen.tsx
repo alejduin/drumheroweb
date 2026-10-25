@@ -2,10 +2,11 @@ import { Button } from '@/ui/primitives'
 
 interface HomeScreenProps {
   onPlay: () => void
+  onImport: () => void
   onSettings: () => void
 }
 
-export function HomeScreen({ onPlay, onSettings }: HomeScreenProps) {
+export function HomeScreen({ onPlay, onImport, onSettings }: HomeScreenProps) {
   return (
     <main className="flex h-full flex-col items-center justify-center gap-8 bg-bg font-sans text-fg select-none">
       <div className="text-center">
@@ -17,6 +18,7 @@ export function HomeScreen({ onPlay, onSettings }: HomeScreenProps) {
         <Button variant="primary" size="lg" onClick={onPlay}>
           Jugar
         </Button>
+        <Button onClick={onImport}>Importar canción</Button>
         <Button onClick={onSettings}>Ajustes</Button>
       </div>
 
