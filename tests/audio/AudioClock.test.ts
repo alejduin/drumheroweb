@@ -14,6 +14,23 @@ function setup() {
 }
 
 describe('AudioClock', () => {
+  it('convierte entre canción y contexto con el rate; epoch cambia con cada ancla', () => {
+    const { clock } = setup()
+    const epochs = [clock.epoch]
+    expect(clock.songToCtx(5)).toBeNull()
+    clock.start(2, 10, 0.5) // la posición 10 s suena en ctx = 2, a media velocidad
+    epochs.push(clock.epoch)
+    expect(clock.songToCtx(11)).toBeCloseTo(4)
+    expect(clock.songAtCtx(4)).toBeCloseTo(11)
+    expect(clock.songAtCtx(1.5)).toBe(10) // antes del arranque agendado
+    clock.seek(3)
+    epochs.push(clock.epoch)
+    clock.pause()
+    epochs.push(clock.epoch)
+    expect(clock.songAtCtx(100)).toBe(clock.now())
+    expect(new Set(epochs).size).toBe(4)
+  })
+
   it('detenido devuelve la posición fija', () => {
     const { clock, advance } = setup()
     expect(clock.isPlaying).toBe(false)

@@ -40,8 +40,15 @@ export class FakeBufferSource {
 export class FakeGainNode {
   output: unknown = null
   readonly ramps: Array<[target: number, startTime: number, timeConstant: number]> = []
+  readonly automation: Array<[kind: string, value: number, time: number]> = []
   readonly gain = {
     value: 1,
+    setValueAtTime: (value: number, time: number) => {
+      this.automation.push(['set', value, time])
+    },
+    exponentialRampToValueAtTime: (value: number, time: number) => {
+      this.automation.push(['exp', value, time])
+    },
     setTargetAtTime: (target: number, startTime: number, timeConstant: number) => {
       this.ramps.push([target, startTime, timeConstant])
       this.gain.value = target // el fake llega al objetivo al instante
@@ -54,6 +61,34 @@ export class FakeGainNode {
 
   disconnect(): void {
     this.output = null
+  }
+}
+
+/** Oscilador falso: registra start/stop (los clicks del metrónomo). */
+export class FakeOscillator {
+  readonly frequency = { value: 440 }
+  onended: (() => void) | null = null
+  startAt: number | null = null
+  stopAt: number | null = null
+  /** stop() sin argumento = cancelado. */
+  cancelled = false
+  output: unknown = null
+
+  connect(node: unknown): void {
+    this.output = node
+  }
+
+  disconnect(): void {
+    this.output = null
+  }
+
+  start(when = 0): void {
+    this.startAt = when
+  }
+
+  stop(when?: number): void {
+    if (when === undefined) this.cancelled = true
+    else this.stopAt = when
   }
 }
 
@@ -70,6 +105,7 @@ export class FakeAudioContext implements PlayerContext, MixerContext {
   readonly destination = { name: 'destination' } as unknown as AudioNode
   readonly sources: FakeBufferSource[] = []
   readonly gains: FakeGainNode[] = []
+  readonly oscillators: FakeOscillator[] = []
 
   get getOutputTimestamp(): (() => AudioTimestamp) | undefined {
     const ts = this.outputTimestamp
@@ -80,6 +116,12 @@ export class FakeAudioContext implements PlayerContext, MixerContext {
     const source = new FakeBufferSource()
     this.sources.push(source)
     return source as unknown as AudioBufferSourceNode
+  }
+
+  createOscillator(): OscillatorNode {
+    const osc = new FakeOscillator()
+    this.oscillators.push(osc)
+    return osc as unknown as OscillatorNode
   }
 
   createGain(): GainNode {

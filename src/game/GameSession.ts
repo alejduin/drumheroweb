@@ -7,6 +7,8 @@ import { loadSongAudio } from '@/audio/loadSongAudio'
 import type { DecodeContext, SongAudio, SongAudioSources } from '@/audio/loadSongAudio'
 import { GameEngine } from '@/engine/GameEngine'
 import type { FrameScheduler } from '@/engine/GameEngine'
+import { Metronome } from '@/engine/Metronome'
+import type { MetronomeContext } from '@/engine/Metronome'
 import { ScoreManager } from '@/scoring/ScoreManager'
 import { bindScoring, useGameStore } from '@/store/gameStore'
 import { effectiveSections } from './sections'
@@ -35,7 +37,8 @@ export interface SessionOptions {
 }
 
 /** Subconjunto de AudioContext que usa la sesión (fake en tests). */
-export interface SessionContext extends PlayerContext, MixerContext, DecodeContext {
+export interface SessionContext
+  extends PlayerContext, MixerContext, DecodeContext, MetronomeContext {
   readonly state: AudioContextState
   createBuffer(channels: number, length: number, sampleRate: number): AudioBuffer
   resume(): Promise<void>
@@ -66,6 +69,7 @@ export class GameSession {
   readonly engine: GameEngine
   readonly player: StemPlayer
   readonly mixer: Mixer
+  readonly metronome: Metronome
   readonly peaks: WaveformPeaks
   readonly audioMode: AudioMode
   readonly fallbackReason: string | null
@@ -120,6 +124,16 @@ export class GameSession {
     ]
     // Si el audio acaba antes que el chart, el engine no llegaría a durationS
     this.player.onEnded(() => this.engine.finish())
+
+    // Clicks en el canal "metronome" del mezclador; se realinea solo al pausar o hacer seek
+    this.metronome = new Metronome({
+      ctx,
+      clock: this.player.clock,
+      grid: bundle.chart.grid,
+      output: this.mixer.input('metronome'),
+      scheduler: deps.scheduler,
+    })
+    this.metronome.start()
   }
 
   /** Decodifica el audio y prepara la partida (en pausa, en 0). */
@@ -202,6 +216,7 @@ export class GameSession {
     this.disposed = true
     this.unsubs.forEach(unsub => unsub())
     this.engine.stop()
+    this.metronome.dispose()
     this.player.dispose()
     this.mixer.dispose()
     void this.ctx.close()

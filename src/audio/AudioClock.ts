@@ -36,6 +36,7 @@ export class AudioClock implements SongClock {
   private rate = 1
   private playing = false
   private lastNow = 0
+  private anchorVersion = 0
 
   private readonly ctx: ClockContext
   private readonly perfNow: () => number
@@ -53,6 +54,14 @@ export class AudioClock implements SongClock {
     return this.playing
   }
 
+  /**
+   * Cambia con cada start/pausa/seek: quien agenda audio por adelantado (metrónomo)
+   * sabe así que lo agendado ya no vale.
+   */
+  get epoch(): number {
+    return this.anchorVersion
+  }
+
   /** La posición `songOffset` de la canción empieza a sonar en `ctxTime` (tiempo del contexto). */
   start(ctxTime: number, songOffset: number, rate = 1): void {
     this.anchorCtx = ctxTime
@@ -60,6 +69,7 @@ export class AudioClock implements SongClock {
     this.rate = rate
     this.playing = true
     this.lastNow = -Infinity
+    this.anchorVersion++
   }
 
   /**
@@ -70,6 +80,7 @@ export class AudioClock implements SongClock {
     if (this.playing) {
       this.anchorSong = this.ctxToSong(this.ctx.currentTime)
       this.playing = false
+      this.anchorVersion++
     }
     return this.anchorSong
   }
@@ -78,6 +89,7 @@ export class AudioClock implements SongClock {
   seek(songTime: number): void {
     this.anchorSong = songTime
     this.lastNow = -Infinity
+    this.anchorVersion++
   }
 
   now(): number {
@@ -91,6 +103,21 @@ export class AudioClock implements SongClock {
   perfToSong(perfMs: number): number {
     if (!this.playing) return this.anchorSong
     return this.ctxToSong(this.audibleCtxTime(perfMs))
+  }
+
+  /**
+   * Posición programada en un instante del contexto (lo que se agenda, sin la
+   * latencia de salida). Antes del arranque agendado (START_LEAD_S) o con el reloj
+   * detenido, la posición de arranque o de pausa.
+   */
+  songAtCtx(ctxTime: number): number {
+    return this.playing ? this.ctxToSong(Math.max(ctxTime, this.anchorCtx)) : this.anchorSong
+  }
+
+  /** Instante del contexto en que suena `songTime`; null con el reloj detenido. */
+  songToCtx(songTime: number): number | null {
+    if (!this.playing) return null
+    return this.anchorCtx + (songTime - this.anchorSong) / this.rate
   }
 
   /** Latencia de salida estimada en segundos (para mostrar y registrar). */

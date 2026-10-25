@@ -32,7 +32,7 @@ export interface FrameScheduler {
   cancel(id: number): void
 }
 
-const rafScheduler: FrameScheduler = {
+export const rafScheduler: FrameScheduler = {
   request: callback => requestAnimationFrame(callback),
   cancel: id => cancelAnimationFrame(id),
 }

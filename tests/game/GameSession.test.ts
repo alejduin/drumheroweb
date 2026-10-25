@@ -144,6 +144,15 @@ describe('GameSession', () => {
     expect(session.clock.now()).toBe(2)
   })
 
+  it('el metrónomo agenda clicks en el canal metronome mientras suena', async () => {
+    const { ctx, session } = await open()
+    await session.play()
+    ctx.currentTime += 0.016
+    session.metronome.tick()
+    expect(ctx.oscillators.length).toBeGreaterThan(0)
+    expect(ctx.gains.some(g => g.output === session.mixer.input('metronome'))).toBe(true)
+  })
+
   it('dispose quita la suscripción MIDI, cierra el contexto y limpia el store', async () => {
     const { ctx, session, hits } = await open()
     await session.play()
