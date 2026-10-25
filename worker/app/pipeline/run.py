@@ -97,6 +97,9 @@ def analyze(
         except AudioDecodeError as exc:
             raise PipelineError("DECODE_FAILED", str(exc)) from exc
         duration_s = mix.shape[1] / SAMPLE_RATE
+        # La duración del contenedor puede mentir (VBR sin cabecera): manda la decodificada
+        if duration_s > MAX_AUDIO_DURATION_S + 1:
+            raise PipelineError("TOO_LONG", f"{duration_s:.0f} s > {MAX_AUDIO_DURATION_S} s")
         sha = sha256_file(audio_path)
 
     with stage("separate"):

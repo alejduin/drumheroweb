@@ -19,5 +19,24 @@ services:
       DRUMHERO_SHARED_DIR: /shared
       # cpu | cuda | auto
       DRUMHERO_DEVICE: ${DRUMHERO_DEVICE:-auto}
+  # Servicio HTTP (B11): docker compose up worker → http://localhost:8000/v1/health
+  worker:
+    image: drumhero-worker:dev
+    network_mode: host
+    entrypoint: ["uvicorn", "--factory", "app.api.main:build_app", "--host", "0.0.0.0", "--port", "8000"]
+    volumes:
+      - ./app:/work/app
+      - ../shared:/shared:ro
+      - models:/models
+      # Cola (SQLite), caché de análisis y stems generados
+      - data:/data
+    environment:
+      DRUMHERO_SHARED_DIR: /shared
+      DRUMHERO_DEVICE: ${DRUMHERO_DEVICE:-auto}
+      STORAGE_BACKEND: local
+      DRUMHERO_DATA_DIR: /data
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      PRELOAD_MODELS: ${PRELOAD_MODELS:-1}
 volumes:
   models:
+  data:

@@ -28,6 +28,7 @@ class AudioDecodeError(RuntimeError):
 class AudioInfo:
     duration_s: float
     tags: dict[str, str]  # etiquetas del contenedor (ID3, Vorbis…), claves en minúscula
+    formats: frozenset[str] = frozenset()  # format_name de ffprobe ("mov,mp4,m4a" → 3 nombres)
 
 
 def probe(path: str | Path) -> AudioInfo:
@@ -38,7 +39,7 @@ def probe(path: str | Path) -> AudioInfo:
             "-v",
             "error",
             "-show_entries",
-            "format=duration:format_tags",
+            "format=duration,format_name:format_tags",
             "-of",
             "json",
             str(path),
@@ -54,7 +55,8 @@ def probe(path: str | Path) -> AudioInfo:
     except (KeyError, ValueError) as exc:
         raise AudioDecodeError(f"duración no disponible: {path}") from exc
     tags = {str(k).lower(): str(v).strip() for k, v in fmt.get("tags", {}).items()}
-    return AudioInfo(duration_s=duration, tags=tags)
+    formats = frozenset(name for name in str(fmt.get("format_name", "")).split(",") if name)
+    return AudioInfo(duration_s=duration, tags=tags, formats=formats)
 
 
 def probe_duration_s(path: str | Path) -> float:

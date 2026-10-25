@@ -45,12 +45,15 @@ RUN --mount=type=cache,target=/root/.cache/pip \
       echo "pip falló (intento ${attempt}), reintentando..."; sleep 5; \
     done; exit 1
 
+COPY requirements-api.txt /tmp/requirements-api.txt
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r /tmp/requirements-api.txt
+
 # Herramientas de desarrollo (lint/format); capa aparte para no invalidar la caché anterior
 RUN --mount=type=cache,target=/root/.cache/pip pip install ruff==0.7.4
 
 RUN useradd --create-home --uid 1000 worker \
- && mkdir -p /models /work \
- && chown worker:worker /models /work
+ && mkdir -p /models /work /data \
+ && chown worker:worker /models /work /data
 USER worker
 WORKDIR /work
 

@@ -17,6 +17,30 @@ docker compose run --rm --entrypoint pytest poc                   # todos (inclu
 docker compose run --rm --entrypoint ruff poc check . && docker compose run --rm --entrypoint ruff poc format --check .
 ```
 
+### Servicio HTTP (API `/v1`, B11)
+
+```bash
+docker compose build poc        # misma imagen; tras cambiar requirements-api.txt
+docker compose up worker        # http://localhost:8000 — carga los modelos al arrancar
+curl localhost:8000/v1/health
+curl -F "file=@poc/songs/Mi canción.mp3" localhost:8000/v1/jobs   # → 202 { jobId, status, cached }
+curl localhost:8000/v1/jobs/<jobId>           # estado y etapas
+curl localhost:8000/v1/jobs/<jobId>/result    # chart + stems + peaks (409 si no terminó)
+curl -X DELETE localhost:8000/v1/jobs/<jobId> # cancelar
+```
+
+- `STORAGE_BACKEND=local` (único por ahora; `supabase` llega con B12), sin autenticación.
+- Cola: tabla `jobs` en SQLite (`/data/jobs.sqlite3`, volumen `data`) y un consumidor que procesa
+  un trabajo a la vez. Al reiniciar, lo que quedó a medias vuelve a la cola.
+- Caché por sha256 del audio (`analysis_cache` + `/data/files/<sha256>/`): el mismo archivo responde
+  `200 { cached: true }` al instante. Si el mismo audio ya está en proceso, se devuelve ese trabajo.
+- Entrada: MP3 / WAV / M4A (se comprueba el contenido con ffprobe, no solo la extensión), ≤ 50 MB
+  (`413 TOO_LARGE`), ≤ 10 min (`422 TOO_LONG`; se vuelve a medir tras decodificar).
+- Privacidad: el audio subido se borra al terminar el análisis; solo quedan stems, peaks y chart.
+- Cancelar en proceso corta el análisis al empezar la siguiente etapa.
+- Variables: `CORS_ORIGINS` (por defecto `http://localhost:5173`), `PRELOAD_MODELS` (1 por defecto),
+  `DRUMHERO_DEVICE`, `DRUMHERO_DATA_DIR`.
+
 - Los pesos de Demucs y beat_this se guardan en el volumen `models` (no se descargan otra vez).
 - `app/`, `poc/` y `tests/` están montados: los cambios de código no requieren reconstruir.
 - GPU (NVIDIA + CUDA en WSL):
@@ -36,6 +60,7 @@ docker compose run --rm --entrypoint ruff poc check . && docker compose run --rm
 | `app/pipeline/chart.py` | chart v2 (`full`), limpieza de la rejilla, validación schema + invariantes |
 | `app/pipeline/peaks.py` | picos de forma de onda (`peaks.json`) |
 | `app/pipeline/run.py` | orquesta las etapas y registra el tiempo de cada una |
+| `app/api/` | servicio FastAPI: `main` (rutas), `store` (SQLite), `queue` (consumidor), `uploads` (validación), `stages` |
 | `poc/` | CLI del PoC (Fase A); `songs/` y `references/` son del usuario y no se versionan |
 
 ## Salida de `analyze`
