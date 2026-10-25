@@ -1,7 +1,7 @@
 import { LEVEL_WINDOWS } from '@/constants/scoring'
 import type { Level } from '@/types'
 import { useSettingsStore } from '@/store/settingsStore'
-import { SegmentedControl } from '@/ui/primitives'
+import { Button, SegmentedControl } from '@/ui/primitives'
 
 const LEVEL_OPTIONS: { value: Level; label: string }[] = [
   { value: 'beginner', label: 'Principiante' },
@@ -11,9 +11,10 @@ const LEVEL_OPTIONS: { value: Level; label: string }[] = [
 
 interface SettingsScreenProps {
   onBack: () => void
+  onCalibrate: () => void
 }
 
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
   const {
     midiLatencyOffsetMs,
     level,
@@ -45,24 +46,27 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <h3 className="text-gray-400 text-xs uppercase tracking-widest mb-4">MIDI</h3>
           <SettingRow
             label="Offset de latencia"
-            hint="Ajusta si los golpes se registran tarde o temprano. Positivo = compensar retardo."
+            hint="Lo mide la calibración; aquí se ajusta a mano. Positivo = los golpes llegan tarde."
             value={`${midiLatencyOffsetMs} ms`}
           >
             <input
               type="range"
-              min={-100}
-              max={100}
+              min={-150}
+              max={150}
               step={1}
               value={midiLatencyOffsetMs}
               onChange={e => setLatencyOffset(Number(e.target.value))}
               className="w-full accent-purple-500"
             />
             <div className="flex justify-between text-xs text-gray-600 mt-1">
-              <span>-100 ms</span>
+              <span>-150 ms</span>
               <span>0</span>
-              <span>+100 ms</span>
+              <span>+150 ms</span>
             </div>
           </SettingRow>
+          <Button size="sm" className="mt-4" onClick={onCalibrate}>
+            Calibrar latencia y mapeo MIDI
+          </Button>
         </section>
 
         {/* Nivel */}
