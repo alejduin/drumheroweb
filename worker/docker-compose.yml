@@ -37,6 +37,23 @@ services:
       DRUMHERO_DATA_DIR: /data
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       PRELOAD_MODELS: ${PRELOAD_MODELS:-1}
+  # Modo nube (B12): recoge los trabajos de Supabase. Requiere worker/.env (ver .env.example)
+  cloud-worker:
+    image: drumhero-worker:dev
+    network_mode: host
+    entrypoint: ["python", "-m", "app.cloud"]
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./app:/work/app
+      - ../shared:/shared:ro
+      - models:/models
+      - cloud-work:/data
+    environment:
+      DRUMHERO_SHARED_DIR: /shared
+      DRUMHERO_DEVICE: ${DRUMHERO_DEVICE:-auto}
+      DRUMHERO_DATA_DIR: /data
 volumes:
   models:
   data:
+  cloud-work:

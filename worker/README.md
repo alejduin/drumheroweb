@@ -29,7 +29,7 @@ curl localhost:8000/v1/jobs/<jobId>/result    # chart + stems + peaks (409 si no
 curl -X DELETE localhost:8000/v1/jobs/<jobId> # cancelar
 ```
 
-- `STORAGE_BACKEND=local` (único por ahora; `supabase` llega con B12), sin autenticación.
+- `STORAGE_BACKEND=local`, sin autenticación (para la nube ver «Modo nube» abajo).
 - Cola: tabla `jobs` en SQLite (`/data/jobs.sqlite3`, volumen `data`) y un consumidor que procesa
   un trabajo a la vez. Al reiniciar, lo que quedó a medias vuelve a la cola.
 - Caché por sha256 del audio (`analysis_cache` + `/data/files/<sha256>/`): el mismo archivo responde
@@ -40,6 +40,25 @@ curl -X DELETE localhost:8000/v1/jobs/<jobId> # cancelar
 - Cancelar en proceso corta el análisis al empezar la siguiente etapa.
 - Variables: `CORS_ORIGINS` (por defecto `http://localhost:5173`), `PRELOAD_MODELS` (1 por defecto),
   `DRUMHERO_DEVICE`, `DRUMHERO_DATA_DIR`.
+
+### Modo nube (Supabase, B12)
+
+```bash
+cp .env.example .env            # y pega la Secret key (Dashboard → Project Settings → API Keys)
+docker compose up -d cloud-worker
+docker compose logs -f cloud-worker
+```
+
+- La app (con `VITE_SUPABASE_*` en `.env.local`) sube el audio a `audio/{usuario}/{canción}/` y crea
+  una fila en `jobs`. Este proceso (`python -m app.cloud`) la reclama con `claim_next_job` (sin
+  pisarse con otro worker), analiza y deja chart + peaks en `charts` y los stems en
+  `stems/{usuario}/{canción}/`. El progreso llega a la app por Realtime.
+- Late cada 30 s en la tabla `workers`: la app avisa si nadie va a recoger los trabajos, pero deja
+  importar igual (quedan en cola hasta que se encienda la PC).
+- Caché por sha256 en `analysis_cache`: el mismo audio copia los stems sin volver a analizar.
+- Al arrancar, lo que este `WORKER_ID` dejó a medias vuelve a la cola.
+- La Secret key salta RLS: solo en `worker/.env` (en `.gitignore`), nunca en el navegador.
+- Esquema y políticas: `supabase/migrations/`; prueba de RLS: `supabase/tests/rls_check.sql`.
 
 - Los pesos de Demucs y beat_this se guardan en el volumen `models` (no se descargan otra vez).
 - `app/`, `poc/` y `tests/` están montados: los cambios de código no requieren reconstruir.

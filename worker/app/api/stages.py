@@ -95,3 +95,16 @@ def chart_summary(chart: dict) -> dict:
         "lowConfidenceCount": sum(low.values()),
         "lowConfidenceByPiece": {p: low[p] for p in PIECE_ORDER if p in low},
     }
+
+
+# Desde esta fracción de notas dudosas la canción queda "por revisar" (igual que src/library/status.ts)
+NEEDS_REVIEW_FRACTION = 0.1
+
+
+def song_status(chart: dict) -> str:
+    """ready o needs_review según cuántas notas quedaron con confianza baja."""
+    notes = chart["difficulties"]["full"]["notes"]
+    if not notes:
+        return "needs_review"
+    low = sum(1 for n in notes if n["confidence"] < LOW_CONFIDENCE_THRESHOLD)
+    return "needs_review" if low / len(notes) >= NEEDS_REVIEW_FRACTION else "ready"
