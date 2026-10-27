@@ -39,3 +39,6 @@ worker/poc/songs/*
 worker/poc/references/*
 !worker/poc/references/README.md
 worker/poc/out/
+
+# Vercel (enlace del proyecto y build de salida)
+.vercel/

@@ -41,6 +41,7 @@ npm run typecheck    # tsc -b (revisa app + config)
 npm run lint         # ESLint, 0 warnings
 npm run test:run     # Vitest single run
 npm run format       # Prettier
+npm run deploy       # Publica el build estático en Vercel (https://drumhero-beta.vercel.app); exige .env.local
 ```
 
 Worker (a partir de la Fase A): ver `worker/README.md`.
