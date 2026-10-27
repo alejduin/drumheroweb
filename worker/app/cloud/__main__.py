@@ -24,6 +24,8 @@ from app.versions import model_versions
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    # Cada consulta a la cola (cada 5 s) llenaría el log
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     log = logging.getLogger("drumhero.cloud")
     url = os.environ.get("SUPABASE_URL", "").strip()
     key = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
