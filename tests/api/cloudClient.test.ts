@@ -222,7 +222,7 @@ describe('cliente de la nube', () => {
       url: 'u',
       publishableKey: 'k',
     })
-    expect(authErrorMessage({ message: 'x', code: 'otp_expired', status: 403 })).toMatch(/venció/)
+    expect(authErrorMessage({ message: 'x', code: 'otp_expired', status: 403 })).toMatch(/enlace/)
     expect(authErrorMessage({ message: 'x', status: 0 })).toMatch(/Sin conexión/)
   })
 })

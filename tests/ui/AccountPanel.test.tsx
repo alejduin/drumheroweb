@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/store/authStore'
 import { AccountPanel } from '@/ui/account/AccountPanel'
 
-const requestCode = vi.fn(async () => {})
-const confirmCode = vi.fn(async () => {})
+const requestLink = vi.fn(async () => {})
+const cancelLink = vi.fn()
 const signOut = vi.fn(async () => {})
 
 function setState(patch: Partial<ReturnType<typeof useAuthStore.getState>>) {
@@ -14,8 +14,8 @@ function setState(patch: Partial<ReturnType<typeof useAuthStore.getState>>) {
     pending: null,
     busy: false,
     error: null,
-    requestCode,
-    confirmCode,
+    requestLink,
+    cancelLink,
     signOut,
     ...patch,
   })
@@ -34,23 +34,25 @@ describe('AccountPanel', () => {
     setState({})
     render(<AccountPanel />)
     fireEvent.change(screen.getByLabelText('Correo'), { target: { value: 'yo@correo.com' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar código' }))
-    expect(requestCode).toHaveBeenCalledWith('link', 'yo@correo.com')
+    fireEvent.click(screen.getByRole('button', { name: 'Enviarme un enlace' }))
+    expect(requestLink).toHaveBeenCalledWith('link', 'yo@correo.com')
 
     fireEvent.click(screen.getByRole('button', { name: /Entrar con mi correo/ }))
     expect(screen.getByText(/dejarán de verse aquí/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar código' }))
-    expect(requestCode).toHaveBeenLastCalledWith('signin', 'yo@correo.com')
+    fireEvent.click(screen.getByRole('button', { name: 'Enviarme un enlace' }))
+    expect(requestLink).toHaveBeenLastCalledWith('signin', 'yo@correo.com')
   })
 
-  it('pide el código enviado y muestra el error', () => {
-    setState({ pending: { kind: 'link', email: 'yo@correo.com' }, error: 'El código no es válido' })
+  it('espera el enlace y permite reenviarlo', () => {
+    setState({ pending: { kind: 'signin', email: 'yo@correo.com' }, error: 'Demasiados correos' })
     render(<AccountPanel />)
     expect(screen.getByText('yo@correo.com')).toBeInTheDocument()
-    expect(screen.getByText('El código no es válido')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Código'), { target: { value: '123456' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
-    expect(confirmCode).toHaveBeenCalledWith('123456')
+    expect(screen.getByText(/en este equipo y este navegador/)).toBeInTheDocument()
+    expect(screen.getByText('Demasiados correos')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Reenviar' }))
+    expect(requestLink).toHaveBeenCalledWith('signin', 'yo@correo.com')
+    fireEvent.click(screen.getByRole('button', { name: 'Usar otro correo' }))
+    expect(cancelLink).toHaveBeenCalled()
   })
 
   it('con correo vinculado permite cerrar sesión', () => {

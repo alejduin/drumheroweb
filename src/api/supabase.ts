@@ -27,7 +27,13 @@ export function supabase(): SupabaseClient | null {
     const config = cloudConfig()
     client = config
       ? createClient(config.url, config.publishableKey, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+          // implicit: el enlace del correo trae la sesión en el #hash y la app la toma al abrir
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            flowType: 'implicit',
+          },
         })
       : null
   }

@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import { TextField } from '@/ui/library/TextField'
 import { Button, Panel } from '@/ui/primitives'
 
-/** Cuenta en la nube: vincular el correo o entrar desde otro equipo (PLAN_V2 B12). */
+/** Cuenta en la nube: vincular el correo o entrar desde otro equipo con un enlace (PLAN_V2 B12). */
 export function AccountPanel() {
   const status = useAuthStore(s => s.status)
   const user = useAuthStore(s => s.user)
@@ -13,7 +13,6 @@ export function AccountPanel() {
   const error = useAuthStore(s => s.error)
   const [mode, setMode] = useState<'link' | 'signin'>('link')
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
 
   if (status === 'off') return null
 
@@ -21,12 +20,7 @@ export function AccountPanel() {
 
   function onRequest(e: FormEvent) {
     e.preventDefault()
-    void auth.requestCode(mode, email)
-  }
-
-  function onConfirm(e: FormEvent) {
-    e.preventDefault()
-    void auth.confirmCode(code).then(() => setCode(''))
+    void auth.requestLink(mode, email)
   }
 
   const errorLine = error && (
@@ -76,32 +70,28 @@ export function AccountPanel() {
 
   if (pending) {
     return (
-      <Panel title="Cuenta" aside="código por correo">
-        <form onSubmit={onConfirm} className="flex flex-col gap-3">
-          <p className="text-sm text-fg-2">
-            Te enviamos un código de 6 dígitos a{' '}
-            <span className="font-semibold text-fg">{pending.email}</span>.
-          </p>
-          <div className="flex items-end gap-2">
-            <TextField
-              id="account-code"
-              className="w-40"
-              label="Código"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={code}
-              onChange={e => setCode(e.target.value)}
-              error={error}
-            />
-            <Button type="submit" variant="primary" disabled={busy || code.trim().length < 6}>
-              {busy ? 'Comprobando…' : 'Confirmar'}
-            </Button>
-            <Button type="button" disabled={busy} onClick={() => auth.cancelCode()}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
+      <Panel title="Cuenta" aside="enlace por correo">
+        <p className="text-sm text-fg-2">
+          Te enviamos un enlace a <span className="font-semibold text-fg">{pending.email}</span>.
+          Ábrelo <span className="font-semibold text-fg">en este equipo y este navegador</span>
+          {pending.kind === 'link'
+            ? ' para vincular tu correo.'
+            : ' para entrar a tu biblioteca.'}{' '}
+          Si no llega, revisa la carpeta de spam.
+        </p>
+        {errorLine}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => void auth.requestLink(pending.kind, pending.email)}
+          >
+            {busy ? 'Enviando…' : 'Reenviar'}
+          </Button>
+          <Button size="sm" disabled={busy} onClick={() => auth.cancelLink()}>
+            Usar otro correo
+          </Button>
+        </div>
       </Panel>
     )
   }
@@ -128,7 +118,7 @@ export function AccountPanel() {
             error={error}
           />
           <Button type="submit" variant="primary" disabled={busy || !email.trim()}>
-            {busy ? 'Enviando…' : 'Enviar código'}
+            {busy ? 'Enviando…' : 'Enviarme un enlace'}
           </Button>
         </div>
         <button
@@ -136,7 +126,7 @@ export function AccountPanel() {
           className="cursor-pointer self-start text-xs font-semibold text-accent underline-offset-2 hover:underline"
           onClick={() => {
             setMode(linking ? 'signin' : 'link')
-            auth.cancelCode()
+            auth.cancelLink()
           }}
         >
           {linking

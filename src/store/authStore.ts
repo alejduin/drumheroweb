@@ -8,8 +8,8 @@ import { useLibraryStore } from '@/store/libraryStore'
 
 export type AuthStatus = 'off' | 'connecting' | 'ready' | 'error'
 
-/** Código pedido y a la espera de que la persona lo escriba. */
-export interface PendingCode {
+/** Enlace enviado: falta abrirlo desde el correo en este equipo. */
+export interface PendingLink {
   kind: 'link' | 'signin'
   email: string
 }
@@ -18,15 +18,15 @@ export interface AuthState {
   /** off = modo local (sin Supabase configurado). */
   status: AuthStatus
   user: AuthUser | null
-  pending: PendingCode | null
+  pending: PendingLink | null
   busy: boolean
   error: string | null
 
-  /** Retoma la sesión guardada o crea una cuenta anónima. */
+  /** Retoma la sesión (guardada o del enlace) o crea una cuenta anónima. */
   init(): Promise<void>
-  requestCode(kind: PendingCode['kind'], email: string): Promise<void>
-  confirmCode(code: string): Promise<void>
-  cancelCode(): void
+  /** Envía el enlace por correo: vincular esta cuenta o entrar con otra. */
+  requestLink(kind: PendingLink['kind'], email: string): Promise<void>
+  cancelLink(): void
   signOut(): Promise<void>
 }
 
@@ -37,7 +37,6 @@ export interface AuthDeps {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const CODE_RE = /^\d{6}$/
 
 const messageOf = (error: unknown) =>
   error instanceof AuthFailure
@@ -60,8 +59,21 @@ export function createAuthStore({ api, onUser }: AuthDeps) {
 
     async function become(user: AuthUser) {
       set({ user, status: 'ready', pending: null })
+      subscribe()
       // Sin red la biblioteca local sigue sirviendo; se reintenta al volver
       await onUser(user).catch(() => {})
+    }
+
+    let subscribed = false
+    /** El enlace se abre en otra pestaña: la sesión llega por aquí. */
+    function subscribe() {
+      if (subscribed || !api) return
+      subscribed = true
+      api.onUserChange(user => {
+        const current = get().user
+        if (!user || (current && current.id === user.id && current.email === user.email)) return
+        void become(user)
+      })
     }
 
     return {
@@ -75,7 +87,9 @@ export function createAuthStore({ api, onUser }: AuthDeps) {
         if (!api || get().user || get().busy) return
         set({ status: 'connecting', busy: true, error: null })
         try {
-          await become((await api.currentUser()) ?? (await api.signInAnonymously()))
+          const { user, error } = await api.currentUser()
+          await become(user ?? (await api.signInAnonymously()))
+          if (error) set({ error })
         } catch (error) {
           set({ status: 'error', error: messageOf(error) })
         } finally {
@@ -83,7 +97,7 @@ export function createAuthStore({ api, onUser }: AuthDeps) {
         }
       },
 
-      requestCode(kind, email) {
+      requestLink(kind, email) {
         const clean = email.trim().toLowerCase()
         if (!EMAIL_RE.test(clean)) {
           set({ error: 'Revisa el correo: no parece válido.' })
@@ -96,24 +110,7 @@ export function createAuthStore({ api, onUser }: AuthDeps) {
         })
       },
 
-      confirmCode(code) {
-        const pending = get().pending
-        const clean = code.replace(/\s+/g, '')
-        if (!pending || !api) return Promise.resolve()
-        if (!CODE_RE.test(clean)) {
-          set({ error: 'El código tiene 6 dígitos.' })
-          return Promise.resolve()
-        }
-        return run(async () => {
-          const user =
-            pending.kind === 'link'
-              ? await api.confirmLink(pending.email, clean)
-              : await api.confirmSignIn(pending.email, clean)
-          await become(user)
-        })
-      },
-
-      cancelCode() {
+      cancelLink() {
         set({ pending: null, error: null })
       },
 
