@@ -7,6 +7,7 @@ import { SONG_LIBRARY } from '@/songs/songLibrary'
 import type { SongMeta } from '@/songs/songLibrary'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useProgressStore } from '@/store/progressStore'
+import { AccountPanel } from '@/ui/account/AccountPanel'
 import { LibrarySongRow } from '@/ui/library/LibrarySongRow'
 import { Button, Panel, Stars } from '@/ui/primitives'
 
@@ -33,6 +34,7 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
   const songs = useLibraryStore(s => s.songs)
   const loaded = useLibraryStore(s => s.loaded)
   const trackers = useLibraryStore(s => s.trackers)
+  const cloud = useLibraryStore(s => s.cloud)
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -86,7 +88,16 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
           </p>
         )}
 
-        <Panel title="Mis canciones" aside="guardadas en este navegador · se juegan sin red">
+        <AccountPanel />
+
+        <Panel
+          title="Mis canciones"
+          aside={
+            cloud
+              ? 'en tu cuenta · se juegan sin red una vez descargadas'
+              : 'guardadas en este navegador · se juegan sin red'
+          }
+        >
           {loaded && songs.length === 0 && (
             <div className="flex flex-col items-start gap-3 rounded-md bg-surface-2 p-4">
               <p className="text-sm text-fg-2">
@@ -113,7 +124,12 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
                   onRemove={() => {
                     const verb = song.status === 'analyzing' ? 'Cancelar el análisis de' : 'Borrar'
                     if (window.confirm(`${verb} «${song.title}»?`)) {
-                      void useLibraryStore.getState().cancel(song.id)
+                      useLibraryStore
+                        .getState()
+                        .cancel(song.id)
+                        .catch(() =>
+                          setError(`No se pudo borrar «${song.title}»: revisa la conexión.`),
+                        )
                     }
                   }}
                 />

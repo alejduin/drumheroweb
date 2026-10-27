@@ -24,6 +24,7 @@ interface PickedFile {
 /** Importar: elegir el audio, analizarlo con el worker y jugarlo (PLAN_V2 B13). */
 export function ImportScreen({ onPlay, onBack, initialSongId = null }: ImportScreenProps) {
   const workerStatus = useLibraryStore(s => s.workerStatus)
+  const cloud = useLibraryStore(s => s.cloud)
   const checkWorker = useLibraryStore(s => s.checkWorker)
   const importSong = useLibraryStore(s => s.importSong)
   const [picked, setPicked] = useState<PickedFile | null>(null)
@@ -54,7 +55,7 @@ export function ImportScreen({ onPlay, onBack, initialSongId = null }: ImportScr
     youtube.trim() && !parseYouTubeId(youtube) ? 'No parece un enlace a un video de YouTube.' : null
   const locked = songId !== null
   const canAnalyze =
-    picked !== null && !reading && !youtubeError && !locked && workerStatus !== 'offline'
+    picked !== null && !reading && !youtubeError && !locked && (cloud || workerStatus !== 'offline')
 
   async function onFile(file: File) {
     setReading(true)
@@ -140,7 +141,18 @@ export function ImportScreen({ onPlay, onBack, initialSongId = null }: ImportScr
         </div>
       </div>
 
-      {workerStatus === 'offline' && (
+      {workerStatus === 'offline' && cloud && (
+        <p
+          role="status"
+          className="rounded-md border border-close-border bg-close-bg px-4 py-3 text-sm text-close-text"
+        >
+          El worker de IA de tu PC no está encendido. Puedes importar igual: la canción queda en
+          cola y se analiza cuando lo arranques con{' '}
+          <code className="font-mono">docker compose up -d cloud-worker</code>.
+        </p>
+      )}
+
+      {workerStatus === 'offline' && !cloud && (
         <p
           role="alert"
           className="rounded-md border border-close-border bg-close-bg px-4 py-3 text-sm text-close-text"

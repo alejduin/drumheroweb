@@ -33,13 +33,23 @@ export class WorkerError extends Error {
   }
 }
 
+/** Datos de la canción que acompañan al audio (el worker local solo usa título y artista). */
+export interface JobMeta {
+  songId: string
+  title: string
+  artist: string
+  durationS: number
+  youtubeUrl: string | null
+}
+
 export interface WorkerClient {
-  health(): Promise<HealthResponse>
-  createJob(
-    file: Blob,
-    fileName: string,
-    meta: { title: string; artist: string },
-  ): Promise<CreateJobResponse>
+  /** Lanza si no hay un worker que vaya a recoger los trabajos. */
+  health(): Promise<void>
+  /**
+   * Crea un trabajo. `file` puede faltar si el audio ya está en la nube (canción
+   * importada en otro equipo); el worker local siempre lo necesita.
+   */
+  createJob(file: Blob | null, fileName: string, meta: JobMeta): Promise<CreateJobResponse>
   getJob(jobId: string): Promise<Job>
   getResult(jobId: string): Promise<JobResult>
   cancelJob(jobId: string): Promise<void>
@@ -70,8 +80,13 @@ export function createWorkerClient(baseUrl = workerUrl(), fetchFn: Fetch = fetch
     (await (await request(path, init)).json()) as T
 
   return {
-    health: () => json<HealthResponse>('/v1/health'),
+    async health() {
+      await json<HealthResponse>('/v1/health')
+    },
     createJob(file, fileName, { title, artist }) {
+      if (!file) {
+        return Promise.reject(new WorkerError('NOT_FOUND', 'falta el audio de la canción', 400))
+      }
       const form = new FormData()
       form.append('file', file, fileName)
       if (title) form.append('title', title)

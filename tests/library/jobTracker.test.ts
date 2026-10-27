@@ -20,7 +20,11 @@ function run(client: FakeWorkerClient, start = initialTracker(), patch: Partial<
   const completed: unknown[] = []
   const promise = trackJob(start, {
     client,
-    getAudio: async () => ({ file: new Blob(['x']), fileName: 'a.mp3', title: 'T', artist: 'A' }),
+    getAudio: async () => ({
+      file: new Blob(['x']),
+      fileName: 'a.mp3',
+      meta: { songId: 's', title: 'T', artist: 'A', durationS: 10, youtubeUrl: null },
+    }),
     onComplete: async result => {
       completed.push(result)
     },

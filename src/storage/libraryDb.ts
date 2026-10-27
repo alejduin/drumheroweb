@@ -27,6 +27,8 @@ export interface LibrarySong {
   createdAt: number
   updatedAt: number
   lastPlayedAt: number | null
+  /** Está en la nube (Supabase): se sincroniza y se borra también allí. */
+  cloud?: boolean
 }
 
 export interface AssetMap {

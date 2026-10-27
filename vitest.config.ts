@@ -12,6 +12,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     globals: true,
+    // Los tests nunca hablan con el Supabase real aunque exista .env.local
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' },
     // Sin esto Vitest vacía los .css; el test de paridad de tokens lee theme.css?raw
     css: { include: [/theme\.css/] },
   },

@@ -1,6 +1,6 @@
 import type { AnalysisStage, ChartV2, Job, JobResult, JobStatus } from '@/types'
 import { ANALYSIS_STAGE_IDS } from '@/types'
-import type { WorkerClient } from '@/api/workerClient'
+import type { JobMeta, WorkerClient } from '@/api/workerClient'
 
 /** Chart mínimo del worker: `low` notas de confianza baja entre `total`. */
 export function analyzedChart(total = 20, low = 0): ChartV2 {
@@ -75,17 +75,18 @@ export class FakeWorkerClient implements WorkerClient {
   polls = 0
   canceled: string[] = []
 
+  /** Último `meta` y archivo recibidos al crear un trabajo. */
+  lastMeta: JobMeta | null = null
+  lastFile: Blob | null = null
+
   async health() {
     if (!this.healthy) throw new Error('offline')
-    return {
-      status: 'ok' as const,
-      device: 'cpu' as const,
-      models: { demucs: 'd', adtof: 'a', beatThis: 'b' },
-    }
   }
 
-  async createJob(_file: Blob, fileName: string, meta: { title: string; artist: string }) {
-    this.created.push({ fileName, ...meta })
+  async createJob(file: Blob | null, fileName: string, meta: JobMeta) {
+    this.created.push({ fileName, title: meta.title, artist: meta.artist })
+    this.lastMeta = meta
+    this.lastFile = file
     return unwrap(this.creates.length > 1 ? this.creates.shift()! : this.creates[0])
   }
 

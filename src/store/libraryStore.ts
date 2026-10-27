@@ -1,16 +1,20 @@
 import { create } from 'zustand'
 import type { SongBundle } from '@/game/GameSession'
+import { createCloudClient, createJobWaker } from '@/api/cloudClient'
+import type { RemoteLibrary, RemoteSong } from '@/api/cloudClient'
+import { supabase } from '@/api/supabase'
 import { createWorkerClient } from '@/api/workerClient'
 import type { WorkerClient } from '@/api/workerClient'
 import { initialTracker, trackJob, trackerReducer } from '@/library/jobTracker'
 import type { DownloadedResult, TrackerState } from '@/library/jobTracker'
 import { statusForChart, summaryFromChart } from '@/library/status'
 import { openLibraryDb } from '@/storage/libraryDb'
-import type { LibraryDb, LibrarySong } from '@/storage/libraryDb'
+import type { AssetKind, AssetMap, LibraryDb, LibrarySong } from '@/storage/libraryDb'
 
-// ─── Biblioteca de canciones importadas (PLAN_V2 B13) ────────────────────────
-// IndexedDB es la fuente de verdad; el store refleja la lista y el progreso de
-// los análisis en curso. Sin persist: se recarga de IndexedDB al abrir la app.
+// ─── Biblioteca de canciones importadas (PLAN_V2 B13 + B12) ──────────────────
+// IndexedDB es la copia de trabajo (se juega sin red); el store refleja la lista
+// y el progreso de los análisis. En modo nube `remote` es la fuente de verdad:
+// sync() trae las canciones de la cuenta y los archivos se bajan al jugarlas.
 
 export type WorkerStatus = 'unknown' | 'online' | 'offline'
 
@@ -31,6 +35,8 @@ export interface LibraryDeps {
   newId: () => string
   /** Aviso al terminar un análisis (Notification API en la app). */
   notify: (song: LibrarySong) => void
+  /** Biblioteca en Supabase; null en modo local. */
+  remote?: RemoteLibrary | null
 }
 
 export interface LibraryState {
@@ -39,9 +45,13 @@ export interface LibraryState {
   /** Progreso de los análisis de esta sesión, por id de canción. */
   trackers: Record<string, TrackerState>
   workerStatus: WorkerStatus
+  /** Modo nube: el worker recoge los trabajos aunque se encienda más tarde. */
+  cloud: boolean
 
   /** Lee la biblioteca y reanuda los análisis que quedaron a medias. */
   load(): Promise<void>
+  /** Trae las canciones de la cuenta (modo nube). Lanza si no hay red o sesión. */
+  sync(): Promise<void>
   checkWorker(): Promise<WorkerStatus>
   /** Guarda el audio y arranca el análisis. Retorna el id de la canción. */
   importSong(input: ImportInput): Promise<string>
@@ -58,6 +68,7 @@ export function createLibraryStore(deps: LibraryDeps) {
   let dbPromise: Promise<LibraryDb> | null = null
   const db = () => (dbPromise ??= deps.openDb())
   const controllers = new Map<string, AbortController>()
+  const remote = deps.remote ?? null
 
   return create<LibraryState>()((set, get) => {
     const replaceSong = (song: LibrarySong) =>
@@ -102,8 +113,19 @@ export function createLibraryStore(deps: LibraryDeps) {
             library.getSong(id),
             library.getAsset(id, 'audio'),
           ])
-          if (!song || !file) throw new Error('falta el audio de la canción')
-          return { file, fileName: song.fileName, title: song.title, artist: song.artist }
+          // En la nube el audio puede estar solo allí (importado en otro equipo)
+          if (!song || (!file && !song.cloud)) throw new Error('falta el audio de la canción')
+          return {
+            file: file ?? null,
+            fileName: song.fileName,
+            meta: {
+              songId: id,
+              title: song.title,
+              artist: song.artist,
+              durationS: song.durationS,
+              youtubeUrl: song.youtubeUrl,
+            },
+          }
         },
         onComplete: result => complete(id, result),
         onState(state) {
@@ -111,7 +133,7 @@ export function createLibraryStore(deps: LibraryDeps) {
           // El jobId se guarda en cuanto existe: al recargar se sigue consultando
           if (state.jobId && state.jobId !== lastJobId) {
             lastJobId = state.jobId
-            void updateSong(id, { jobId: state.jobId })
+            void updateSong(id, { jobId: state.jobId, ...(remote ? { cloud: true } : {}) })
           }
         },
       })
@@ -121,18 +143,64 @@ export function createLibraryStore(deps: LibraryDeps) {
       }
     }
 
+    function resumeAnalyses(songs: LibrarySong[]) {
+      for (const song of songs) {
+        if (song.status === 'analyzing') void track(song.id, initialTracker(song.jobId))
+      }
+    }
+
+    /** Mezcla una canción de la nube con la copia local (si la hay). */
+    function fromRemote(r: RemoteSong, local: LibrarySong | undefined): LibrarySong {
+      // Un análisis seguido en esta pestaña manda sobre lo que diga la nube
+      if (local && controllers.has(local.id)) return { ...local, cloud: true }
+      const { jobId, ...fields } = r
+      return {
+        ...fields,
+        jobId: r.status === 'analyzing' ? (jobId ?? local?.jobId ?? null) : null,
+        lastPlayedAt: Math.max(r.lastPlayedAt ?? 0, local?.lastPlayedAt ?? 0) || null,
+        cloud: true,
+      }
+    }
+
     return {
       songs: [],
       loaded: false,
       trackers: {},
       workerStatus: 'unknown',
+      cloud: Boolean(remote),
 
       async load() {
         const songs = await (await db()).listSongs()
         set({ songs, loaded: true })
-        for (const song of songs) {
-          if (song.status === 'analyzing') void track(song.id, initialTracker(song.jobId))
+        // En modo nube los análisis se reanudan después de sync() (hace falta sesión)
+        if (!remote) resumeAnalyses(songs)
+      },
+
+      async sync() {
+        if (!remote) return
+        const library = await db()
+        const [remoteSongs, localSongs] = await Promise.all([
+          remote.listSongs(),
+          library.listSongs(),
+        ])
+        const locals = new Map(localSongs.map(s => [s.id, s]))
+        const remoteIds = new Set(remoteSongs.map(s => s.id))
+        for (const r of remoteSongs) await library.putSong(fromRemote(r, locals.get(r.id)))
+        // Borradas en otro equipo (o de otra cuenta): fuera de este navegador.
+        // Las que nunca subieron a la nube se quedan.
+        for (const local of localSongs) {
+          if (local.cloud && !remoteIds.has(local.id) && !controllers.has(local.id)) {
+            await library.deleteSong(local.id)
+          }
         }
+        const songs = await library.listSongs()
+        set(s => {
+          const trackers = { ...s.trackers }
+          for (const id of Object.keys(trackers))
+            if (!songs.some(x => x.id === id)) delete trackers[id]
+          return { songs, trackers, loaded: true }
+        })
+        resumeAnalyses(songs)
       },
 
       async checkWorker() {
@@ -195,6 +263,9 @@ export function createLibraryStore(deps: LibraryDeps) {
 
       async remove(id) {
         controllers.get(id)?.abort()
+        const song = await (await db()).getSong(id)
+        // Sin red no se borra: la nube la volvería a traer en la siguiente sync
+        if (remote && song?.cloud) await remote.deleteSong(id)
         await (await db()).deleteSong(id)
         set(s => {
           const trackers = { ...s.trackers }
@@ -213,22 +284,52 @@ export function createLibraryStore(deps: LibraryDeps) {
           library.getAsset(id, 'backing'),
           library.getAsset(id, 'audio'),
         ])
-        if (!song || !chart) throw new Error('La canción todavía no tiene partitura.')
-        const stems = drums && backing ? { drums, backing } : null
-        if (!stems && !audio) throw new Error('Falta el audio de la canción.')
-        return {
-          chart: { ...chart, title: song.title, artist: song.artist, youtubeUrl: song.youtubeUrl },
-          audio: { stems, original: audio },
-          peaks,
-          fileName: song.fileName,
+        if (!song) throw new Error('La canción ya no está en la biblioteca.')
+        if (!chart && remote && song.cloud && song.status !== 'analyzing') {
+          // Analizada en otro equipo: se baja una vez y queda para jugar sin red
+          const downloaded = await remote.fetchResult(id)
+          const assets = {
+            chart: downloaded.result.chart,
+            peaks: downloaded.result.peaks,
+            drums: downloaded.drums,
+            backing: downloaded.backing,
+          }
+          await library.putAssets(id, assets)
+          return toBundle(song, { ...assets, audio })
         }
+        if (!chart) throw new Error('La canción todavía no tiene partitura.')
+        return toBundle(song, { chart, peaks, drums, backing, audio })
       },
 
       async markPlayed(id) {
-        await updateSong(id, { lastPlayedAt: deps.now() })
+        const at = deps.now()
+        const song = await updateSong(id, { lastPlayedAt: at })
+        if (remote && song?.cloud) await remote.markPlayed(id, at).catch(() => {})
       },
     }
   })
+}
+
+function toBundle(
+  song: LibrarySong,
+  {
+    chart,
+    peaks,
+    drums,
+    backing,
+    audio,
+  }: Pick<AssetMap, 'chart'> & {
+    [K in Exclude<AssetKind, 'chart'>]?: AssetMap[K] | null
+  },
+): SongBundle {
+  const stems = drums && backing ? { drums, backing } : null
+  if (!stems && !audio) throw new Error('Falta el audio de la canción.')
+  return {
+    chart: { ...chart, title: song.title, artist: song.artist, youtubeUrl: song.youtubeUrl },
+    audio: { stems, original: audio ?? null },
+    peaks: peaks ?? null,
+    fileName: song.fileName,
+  }
 }
 
 function browserNotify(song: LibrarySong) {
@@ -237,12 +338,31 @@ function browserNotify(song: LibrarySong) {
   new Notification('Partitura lista', { body: `${song.title} ya se puede tocar.` })
 }
 
-export const useLibraryStore = createLibraryStore({
-  openDb: () => openLibraryDb(),
-  client: createWorkerClient(),
-  // Espera entre consultas al worker (no es el reloj del juego)
-  sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
-  now: () => Date.now(),
-  newId: () => crypto.randomUUID(),
-  notify: browserNotify,
-})
+function defaultDeps(): LibraryDeps {
+  const base = {
+    openDb: () => openLibraryDb(),
+    now: () => Date.now(),
+    newId: () => crypto.randomUUID(),
+    notify: browserNotify,
+  }
+  const sb = supabase()
+  if (!sb) {
+    return {
+      ...base,
+      client: createWorkerClient(),
+      // Espera entre consultas al worker (no es el reloj del juego)
+      sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+      remote: null,
+    }
+  }
+  const cloud = createCloudClient(sb, {
+    async userId() {
+      const { data } = await sb.auth.getSession()
+      if (!data.session) throw new Error('sin sesión en la nube')
+      return data.session.user.id
+    },
+  })
+  return { ...base, client: cloud, remote: cloud, sleep: createJobWaker(sb) }
+}
+
+export const useLibraryStore = createLibraryStore(defaultDeps())

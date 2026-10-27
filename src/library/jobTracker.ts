@@ -1,10 +1,10 @@
 import type { Job, JobResult } from '@/types'
 import { WorkerError } from '@/api/workerClient'
-import type { ClientErrorCode, WorkerClient } from '@/api/workerClient'
+import type { ClientErrorCode, JobMeta, WorkerClient } from '@/api/workerClient'
 
 // ─── Seguimiento de un análisis (PLAN_V2 B13) ─────────────────────────────────
 // Máquina de estados pura (trackerReducer) + un driver que sube el audio, consulta
-// el trabajo cada POLL_INTERVAL_MS (Realtime llega con Supabase, B12) y descarga
+// el trabajo cada POLL_INTERVAL_MS (en la nube, Realtime adelanta la consulta) y descarga
 // el resultado. Los cortes de red se reintentan con espera creciente.
 
 export const POLL_INTERVAL_MS = 2000
@@ -121,8 +121,8 @@ export interface DownloadedResult {
 
 export interface TrackerDeps {
   client: WorkerClient
-  /** El audio a subir (se lee de IndexedDB solo si hace falta subirlo). */
-  getAudio: () => Promise<{ file: Blob; fileName: string; title: string; artist: string }>
+  /** El audio a subir (se lee de IndexedDB solo si hace falta subirlo; null si está en la nube). */
+  getAudio: () => Promise<{ file: Blob | null; fileName: string; meta: JobMeta }>
   /** Guarda el resultado; si lanza, el seguimiento falla (INTERNAL). */
   onComplete: (downloaded: DownloadedResult) => Promise<void>
   onState: (state: TrackerState) => void
@@ -148,8 +148,8 @@ export async function trackJob(start: TrackerState, deps: TrackerDeps): Promise<
     }
     try {
       if (state.phase === 'uploading') {
-        const { file, fileName, title, artist } = await deps.getAudio()
-        const created = await client.createJob(file, fileName, { title, artist })
+        const { file, fileName, meta } = await deps.getAudio()
+        const created = await client.createJob(file, fileName, meta)
         dispatch({
           type: 'created',
           jobId: created.jobId,

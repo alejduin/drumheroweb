@@ -10,6 +10,7 @@ import { GameScreen } from '@/ui/screens/GameScreen'
 import { HomeScreen } from '@/ui/screens/HomeScreen'
 import { ResultsScreen } from '@/ui/screens/ResultsScreen'
 import { SettingsScreen } from '@/ui/screens/SettingsScreen'
+import { useAuthStore } from '@/store/authStore'
 import { useLibraryStore } from '@/store/libraryStore'
 import { ImportScreen } from '@/ui/screens/ImportScreen'
 import { LibraryScreen } from '@/ui/screens/LibraryScreen'
@@ -37,6 +38,11 @@ export default function App() {
 
   // El mapa guardado (calibración) es el que usa el midiManager
   useEffect(() => syncMidiMapWithSettings(), [])
+
+  // Modo nube: sesión (anónima o con correo) y biblioteca de la cuenta
+  useEffect(() => {
+    void useAuthStore.getState().init()
+  }, [])
 
   const openSettings = (from: Screen) => {
     setSettingsReturn(from)
