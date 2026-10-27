@@ -116,10 +116,10 @@ compás y beat se derivan de `grid.beats` / `grid.downbeats`. `confidence < 0.6`
 
 ## Estado Actual
 
-**Fase:** 0 completada (preparación). **Próximo:** Fase A — A1 (chart v2 schema + contrato API).
+**Fase:** B en curso. **Próximo:** B14 (`ResultsScreen` + `progressStore` v2), luego B15.
 
 - [x] Fase 0 — preparación (design/, strict typecheck, husky, CLAUDE.md V2)
-- [ ] Fase A — prueba de concepto de IA
-- [ ] Fase B — juego con chart propio
+- [ ] Fase A — prueba de concepto de IA: A1–A5 hechas; falta A6 (`worker/poc/REPORT.md`)
+- [ ] Fase B — juego con chart propio: B1–B13 hechas (B12 en Supabase `drumhero`, publicado en https://drumhero-beta.vercel.app con `npm run deploy`)
 - [ ] Fase C — YouTube y editor
 - [ ] Fase D — aprendizaje
