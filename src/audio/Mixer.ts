@@ -13,6 +13,8 @@ export const MIX_PRESETS = {
   play_drums: { drums: 0, backing: 0.8, metronome: 0.4 },
   // Escuchar la canción completa, sin metrónomo
   listen: { drums: 1, backing: 1, metronome: 0 },
+  // La partitura tocada con el kit sobre la canción sin su batería (PLAN_V2 C4)
+  transcription: { drums: 0, backing: 0.8, metronome: 0, samples: 1 },
 } as const satisfies Record<string, Partial<MixLevels>>
 
 export type MixPreset = keyof typeof MIX_PRESETS

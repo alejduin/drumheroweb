@@ -98,6 +98,8 @@ export class FakeOscillator {
  */
 export class FakeAudioContext implements PlayerContext, MixerContext {
   currentTime = 0
+  /** Baja para que los sonidos sintetizados del kit pesen poco en los tests. */
+  readonly sampleRate = 8000
   outputLatency: number | undefined = 0.02
   baseLatency: number | undefined = 0.01
   /** null = getOutputTimestamp no disponible en este "navegador". */

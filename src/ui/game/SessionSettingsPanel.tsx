@@ -11,12 +11,14 @@ const PHASE_D = 'Llega en la Fase D'
 const PRESET_LABELS: Record<MixPreset, string> = {
   play_drums: 'Tocar yo la batería',
   listen: 'Escuchar la canción',
+  transcription: 'Escuchar la transcripción',
 }
 
 const MIX_ROWS: ReadonlyArray<{ channel: MixChannel; label: string }> = [
   { channel: 'drums', label: 'Batería original' },
   { channel: 'backing', label: 'Backing' },
   { channel: 'metronome', label: 'Metrónomo' },
+  { channel: 'samples', label: 'Samples del kit' },
 ]
 
 // Básico e Intermedio necesitan el reductor de dificultad (Fase D)

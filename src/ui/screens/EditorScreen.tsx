@@ -31,6 +31,22 @@ import { cn } from '@/ui/primitives/cn'
 // Para revisar se oye la batería separada por encima del resto
 const EDITOR_MIX: MixLevels = { drums: 1, backing: 0.5, metronome: 0, samples: 0 }
 
+// "Escuchar la transcripción" (PLAN_V2 C4): la batería original, la partitura
+// tocada con el kit, o las dos para comparar
+type Listen = 'original' | 'transcription' | 'both'
+
+const LISTEN_MIX: Record<Listen, Pick<MixLevels, 'drums' | 'samples'>> = {
+  original: { drums: 1, samples: 0 },
+  transcription: { drums: 0, samples: 1 },
+  both: { drums: 0.7, samples: 0.85 },
+}
+
+const LISTEN_OPTIONS: { value: Listen; label: string }[] = [
+  { value: 'original', label: 'Original' },
+  { value: 'transcription', label: 'Transcripción' },
+  { value: 'both', label: 'Ambas' },
+]
+
 function readOptions(): SessionOptions {
   const s = useSettingsStore.getState()
   return {
@@ -104,6 +120,7 @@ function EditorLayout({
   const { chart } = session
   const [state, dispatch] = useReducer(editorReducer, chart, createEditorState)
   const [tool, setTool] = useState<Tool>('select')
+  const [listen, setListen] = useState<Listen>('original')
   const [sectionIndex, setSectionIndex] = useState(0)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
@@ -114,6 +131,18 @@ function EditorLayout({
   const dirty = isDirty(state)
   const selectedNotes = state.notes.filter(n => state.selection.includes(n.id))
   const hasSelection = selectedNotes.length > 0
+
+  // El kit toca las notas tal como están en el editor, con los cambios sin guardar
+  useEffect(() => {
+    session.kit.setNotes(state.notes)
+  }, [session, state.notes])
+
+  function changeListen(value: Listen) {
+    setListen(value)
+    for (const [channel, level] of Object.entries(LISTEN_MIX[value])) {
+      session.setMixLevel(channel as keyof MixLevels, level)
+    }
+  }
 
   const togglePlay = useCallback(() => {
     if (session.isPlaying) session.pause()
@@ -274,6 +303,12 @@ function EditorLayout({
         <Button size="sm" onClick={() => jumpMeasure(1)}>
           Compás ▶
         </Button>
+        <SegmentedControl<Listen>
+          aria-label="Escuchar"
+          options={LISTEN_OPTIONS}
+          value={listen}
+          onChange={changeListen}
+        />
         <span className="text-xs text-muted">
           Rueda del ratón para desplazarte · clic en una nota para elegirla, Mayús para sumar
         </span>

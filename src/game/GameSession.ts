@@ -4,9 +4,12 @@ import type { MixChannel, MixLevels, MixPreset, MixerContext } from '@/audio/Mix
 import { createSongPlayer } from '@/audio/StemPlayer'
 import type { PlayerContext, StemPlayer } from '@/audio/StemPlayer'
 import { loadSongAudio } from '@/audio/loadSongAudio'
+import { createKitBuffers } from '@/audio/drumSynth'
+import type { KitBufferContext } from '@/audio/drumSynth'
 import type { DecodeContext, SongAudio, SongAudioSources } from '@/audio/loadSongAudio'
 import { GameEngine } from '@/engine/GameEngine'
 import type { FrameScheduler } from '@/engine/GameEngine'
+import { KitPlayer } from '@/engine/KitPlayer'
 import { Metronome } from '@/engine/Metronome'
 import type { MetronomeContext } from '@/engine/Metronome'
 import { ScoreManager } from '@/scoring/ScoreManager'
@@ -38,9 +41,8 @@ export interface SessionOptions {
 
 /** Subconjunto de AudioContext que usa la sesión (fake en tests). */
 export interface SessionContext
-  extends PlayerContext, MixerContext, DecodeContext, MetronomeContext {
+  extends PlayerContext, MixerContext, DecodeContext, MetronomeContext, KitBufferContext {
   readonly state: AudioContextState
-  createBuffer(channels: number, length: number, sampleRate: number): AudioBuffer
   resume(): Promise<void>
   close(): Promise<void>
 }
@@ -70,6 +72,8 @@ export class GameSession {
   readonly player: StemPlayer
   readonly mixer: Mixer
   readonly metronome: Metronome
+  /** Toca la partitura con los sonidos del kit (canal "samples"). */
+  readonly kit: KitPlayer
   readonly peaks: WaveformPeaks
   readonly audioMode: AudioMode
   readonly fallbackReason: string | null
@@ -134,6 +138,17 @@ export class GameSession {
       scheduler: deps.scheduler,
     })
     this.metronome.start()
+
+    // Escuchar la transcripción: las notas de la dificultad cargada en el canal "samples"
+    this.kit = new KitPlayer({
+      ctx,
+      clock: this.player.clock,
+      buffers: createKitBuffers(ctx),
+      notes: this.engine.chartNotes,
+      output: this.mixer.input('samples'),
+      scheduler: deps.scheduler,
+    })
+    this.kit.start()
   }
 
   /** Decodifica el audio y prepara la partida (en pausa, en 0). */
@@ -217,6 +232,7 @@ export class GameSession {
     this.unsubs.forEach(unsub => unsub())
     this.engine.stop()
     this.metronome.dispose()
+    this.kit.dispose()
     this.player.dispose()
     this.mixer.dispose()
     void this.ctx.close()
