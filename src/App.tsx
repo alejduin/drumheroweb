@@ -16,6 +16,7 @@ import { HomeScreen } from '@/ui/screens/HomeScreen'
 import { ResultsScreen } from '@/ui/screens/ResultsScreen'
 import { SettingsScreen } from '@/ui/screens/SettingsScreen'
 import { SyncWizard } from '@/ui/screens/SyncWizard'
+import { EditorScreen } from '@/ui/screens/EditorScreen'
 import { useAuthStore } from '@/store/authStore'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useSessionStore } from '@/store/sessionStore'
@@ -32,6 +33,7 @@ type Screen =
   | 'settings'
   | 'calibration'
   | 'sync'
+  | 'editor'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
@@ -49,6 +51,9 @@ export default function App() {
   // Asistente de sincronía del video: canción y pantalla a la que vuelve
   const [syncSongId, setSyncSongId] = useState<string | null>(null)
   const [syncReturn, setSyncReturn] = useState<Screen>('library')
+  // Editor de partitura: canción y pantalla a la que vuelve
+  const [editorSongId, setEditorSongId] = useState<string | null>(null)
+  const [editorReturn, setEditorReturn] = useState<Screen>('library')
   const { connect } = useMidi()
 
   // Auto-conectar MIDI al montar (solo si el browser lo soporta)
@@ -89,6 +94,13 @@ export default function App() {
     setSyncReturn(from)
     if (from === 'import') setImportSongId(songId)
     setScreen('sync')
+  }
+
+  const openEditor = (songId: string, from: Screen) => {
+    setEditorSongId(songId)
+    setEditorReturn(from)
+    if (from === 'import') setImportSongId(songId)
+    setScreen('editor')
   }
 
   const play = (b: SongBundle, ref: SongRef | null, startAt = 0) => {
@@ -142,6 +154,7 @@ export default function App() {
           onImport={() => openImport()}
           onOpenImport={openImport}
           onSyncVideo={id => openSync(id, 'library')}
+          onEdit={id => openEditor(id, 'library')}
           onBack={() => setScreen('home')}
         />
       )}
@@ -151,8 +164,13 @@ export default function App() {
           initialSongId={importSongId}
           onPlay={(b, id) => play(b, { kind: 'library', id })}
           onSyncVideo={id => openSync(id, 'import')}
+          onEdit={id => openEditor(id, 'import')}
           onBack={() => setScreen('library')}
         />
+      )}
+
+      {screen === 'editor' && editorSongId && (
+        <EditorScreen songId={editorSongId} onBack={() => setScreen(editorReturn)} />
       )}
 
       {screen === 'sync' && syncSongId && (

@@ -15,6 +15,8 @@ interface ImportScreenProps {
   onBack: () => void
   /** Abre el asistente de sincronía del video. */
   onSyncVideo: (songId: string) => void
+  /** Abre el editor de partitura. */
+  onEdit: (songId: string) => void
   /** Abre el progreso de una canción que ya se está analizando. */
   initialSongId?: string | null
 }
@@ -29,6 +31,7 @@ export function ImportScreen({
   onPlay,
   onBack,
   onSyncVideo,
+  onEdit,
   initialSongId = null,
 }: ImportScreenProps) {
   const workerStatus = useLibraryStore(s => s.workerStatus)
@@ -250,6 +253,7 @@ export function ImportScreen({
           workerOffline={workerStatus === 'offline'}
           onPlay={() => void play()}
           onSyncVideo={() => songId && onSyncVideo(songId)}
+          onEdit={() => songId && onEdit(songId)}
           onRetry={() => songId && useLibraryStore.getState().retry(songId)}
           onCancel={() => songId && void useLibraryStore.getState().cancel(songId)}
         />

@@ -27,6 +27,7 @@ interface LibraryScreenProps {
   /** Abre Importar con el progreso de un análisis en curso. */
   onOpenImport: (songId: string) => void
   onSyncVideo: (songId: string) => void
+  onEdit: (songId: string) => void
   onBack: () => void
 }
 
@@ -36,6 +37,7 @@ export function LibraryScreen({
   onImport,
   onOpenImport,
   onSyncVideo,
+  onEdit,
   onBack,
 }: LibraryScreenProps) {
   const [loading, setLoading] = useState<string | null>(null)
@@ -138,6 +140,7 @@ export function LibraryScreen({
                   }
                   onOpen={() => onOpenImport(song.id)}
                   onSyncVideo={() => onSyncVideo(song.id)}
+                  onEdit={() => onEdit(song.id)}
                   onRetry={() => useLibraryStore.getState().retry(song.id)}
                   onRemove={() => {
                     const verb = song.status === 'analyzing' ? 'Cancelar el análisis de' : 'Borrar'

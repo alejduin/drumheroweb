@@ -24,6 +24,7 @@ interface LibrarySongRowProps {
   onPlay: () => void
   onOpen: () => void
   onSyncVideo: () => void
+  onEdit: () => void
   onRetry: () => void
   onRemove: () => void
 }
@@ -38,6 +39,7 @@ export function LibrarySongRow({
   onPlay,
   onOpen,
   onSyncVideo,
+  onEdit,
   onRetry,
   onRemove,
 }: LibrarySongRowProps) {
@@ -70,6 +72,11 @@ export function LibrarySongRow({
         {playable && (
           <Button size="sm" variant="primary" disabled={busy} onClick={onPlay}>
             {busy ? 'Cargando…' : 'Jugar'}
+          </Button>
+        )}
+        {playable && (
+          <Button size="sm" onClick={onEdit}>
+            Editar
           </Button>
         )}
         {playable && song.youtubeUrl && (

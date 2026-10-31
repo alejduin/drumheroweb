@@ -15,6 +15,7 @@ interface AnalysisPanelProps {
   workerOffline?: boolean
   onPlay: () => void
   onSyncVideo: () => void
+  onEdit: () => void
   onRetry: () => void
   onCancel: () => void
 }
@@ -29,6 +30,7 @@ export function AnalysisPanel({
   workerOffline = false,
   onPlay,
   onSyncVideo,
+  onEdit,
   onRetry,
   onCancel,
 }: AnalysisPanelProps) {
@@ -108,8 +110,7 @@ export function AnalysisPanel({
       )}
 
       <div className="flex gap-3">
-        {/* El editor llega en C3 */}
-        <Button className="flex-1" disabled title="Llega con el editor (Fase C)">
+        <Button className="flex-1" disabled={!finished} onClick={onEdit}>
           Revisar en el editor
         </Button>
         <Button

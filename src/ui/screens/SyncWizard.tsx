@@ -4,6 +4,7 @@ import type { MixLevels } from '@/audio/Mixer'
 import type { GameSession, SessionOptions, SongBundle } from '@/game/GameSession'
 import { formatSignedMs } from '@/game/format'
 import { useGameSession } from '@/hooks/useGameSession'
+import { useLibraryBundle } from '@/hooks/useLibraryBundle'
 import { midiManager } from '@/midi/MidiManager'
 import { selectPhase, useGameStore } from '@/store/gameStore'
 import { useLibraryStore } from '@/store/libraryStore'
@@ -46,25 +47,16 @@ interface SyncWizardProps {
 
 /** Asistente de sincronía del video (PLAN_V2 C2): carga la canción y abre el asistente. */
 export function SyncWizard({ songId, onDone }: SyncWizardProps) {
-  const [bundle, setBundle] = useState<SongBundle | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    useLibraryStore
-      .getState()
-      .bundle(songId)
-      .then(
-        b => !cancelled && setBundle(b),
-        (e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e)),
-      )
-    return () => {
-      cancelled = true
-    }
-  }, [songId])
-
-  if (bundle) return <WizardSession bundle={bundle} songId={songId} onDone={onDone} />
-  return <Status message={error ?? 'Cargando la canción…'} onBack={error ? onDone : undefined} />
+  const state = useLibraryBundle(songId)
+  if (state.status === 'ready') {
+    return <WizardSession bundle={state.bundle} songId={songId} onDone={onDone} />
+  }
+  return (
+    <Status
+      message={state.status === 'error' ? state.message : 'Cargando la canción…'}
+      onBack={state.status === 'error' ? onDone : undefined}
+    />
+  )
 }
 
 function Status({ message, onBack }: { message: string; onBack?: () => void }) {

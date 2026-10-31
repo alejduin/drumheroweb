@@ -10,7 +10,7 @@ useLibraryStore.setState({ checkWorker, loaded: true, workerStatus: 'online' })
 afterEach(() => vi.clearAllMocks())
 
 function setup() {
-  render(<ImportScreen onPlay={vi.fn()} onBack={vi.fn()} onSyncVideo={vi.fn()} />)
+  render(<ImportScreen onPlay={vi.fn()} onBack={vi.fn()} onSyncVideo={vi.fn()} onEdit={vi.fn()} />)
   return {
     input: screen.getByTestId('audio-input') as HTMLInputElement,
     analyze: screen.getByRole('button', { name: 'Analizar con IA' }),
