@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ChartSection, Difficulty } from '@/types'
 import type { MixChannel } from '@/audio/Mixer'
 import type { GameSession, SessionOptions, SongBundle } from '@/game/GameSession'
+import { sessionSnapshot } from '@/game/lastSession'
+import type { SongRef } from '@/game/lastSession'
 import { sectionStartS } from '@/game/sections'
 import { useGameSession } from '@/hooks/useGameSession'
 import type { ScoreResults } from '@/scoring/ScoreManager'
 import { selectPhase, useGameStore } from '@/store/gameStore'
+import { useSessionStore } from '@/store/sessionStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { GameHeader } from '@/ui/game/GameHeader'
 import { ScorePanel } from '@/ui/game/ScorePanel'
@@ -17,9 +20,15 @@ import { Button } from '@/ui/primitives'
 
 // Básico e Intermedio llegan con el reductor de dificultad (Fase D)
 const DIFFICULTY: Difficulty = 'full'
+// El control de tempo llega con el loop de práctica (Fase D)
+const TEMPO = 1
 
 interface GameScreenProps {
   bundle: SongBundle
+  /** De dónde recargar la canción en "Continuar"; null = no se guarda la sesión. */
+  songRef: SongRef | null
+  /** Segundo en el que empieza la partida (Continuar retoma la sección guardada). */
+  startAtS?: number
   onExit: () => void
   onFinished: (results: ScoreResults) => void
   onRecalibrate: () => void
@@ -37,13 +46,22 @@ function readOptions(): SessionOptions {
 }
 
 /** Pantalla de juego (PLAN_V2 §4.3). Abre la sesión y muestra carga o error. */
-export function GameScreen({ bundle, onExit, onFinished, onRecalibrate }: GameScreenProps) {
+export function GameScreen({
+  bundle,
+  songRef,
+  startAtS = 0,
+  onExit,
+  onFinished,
+  onRecalibrate,
+}: GameScreenProps) {
   const state = useGameSession(bundle, readOptions)
 
   if (state.status === 'ready') {
     return (
       <GameLayout
         session={state.session}
+        songRef={songRef}
+        startAtS={startAtS}
         onExit={onExit}
         onFinished={onFinished}
         onRecalibrate={onRecalibrate}
@@ -72,14 +90,57 @@ const isTyping = (target: EventTarget | null) =>
 
 interface GameLayoutProps {
   session: GameSession
+  songRef: SongRef | null
+  startAtS: number
   onExit: () => void
   onFinished: (results: ScoreResults) => void
   onRecalibrate: () => void
 }
 
-function GameLayout({ session, onExit, onFinished, onRecalibrate }: GameLayoutProps) {
+function GameLayout({
+  session,
+  songRef,
+  startAtS,
+  onExit,
+  onFinished,
+  onRecalibrate,
+}: GameLayoutProps) {
   const { chart } = session
   const phase = useGameStore(selectPhase)
+
+  // Continuar: la partida empieza en la sección guardada, en pausa
+  useEffect(() => {
+    if (startAtS > 0) session.seek(startAtS)
+  }, [session, startAtS])
+
+  // Última sesión (portada → Continuar): al empezar, pausar, terminar, salir y recargar
+  useEffect(() => {
+    if (!songRef) return
+    const save = () => {
+      const ended = useGameStore.getState().phase === 'ended'
+      useSessionStore.getState().save(
+        sessionSnapshot({
+          song: songRef,
+          chart,
+          sections: session.sections,
+          positionS: ended ? null : session.clock.now(),
+          difficulty: DIFFICULTY,
+          tempo: TEMPO,
+          now: Date.now(),
+        }),
+      )
+    }
+    save()
+    const unsubscribe = useGameStore.subscribe((state, prev) => {
+      if (state.phase !== prev.phase && state.phase !== 'idle') save()
+    })
+    window.addEventListener('pagehide', save)
+    return () => {
+      unsubscribe()
+      window.removeEventListener('pagehide', save)
+      save()
+    }
+  }, [session, songRef, chart])
   const playing = phase === 'playing'
   const [videoVisible, setVideoVisible] = useState(true)
 

@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware'
 import { DEFAULT_MIX, clampLevel } from '@/audio/Mixer'
 import type { MixChannel, MixLevels } from '@/audio/Mixer'
 import { DEFAULT_LEVEL } from '@/constants/scoring'
+import { DEFAULT_ACCENT, applyAccent } from '@/constants/theme'
+import type { AccentName } from '@/constants/theme'
 import type { Level, Piece, ScoreView } from '@/types'
 import { DEFAULT_MIDI_MAP, migrateMidiMap } from '@/midi/midiMap'
 
@@ -16,6 +18,8 @@ export interface UserSettings {
   scrollSpeed: number // multiplicador sobre la velocidad base
   dynamicsBonus: boolean
   mix: MixLevels
+  /** Color de acento de la UI (variantes de las maquetas). */
+  accent: AccentName
 }
 
 interface SettingsStore extends UserSettings {
@@ -28,6 +32,7 @@ interface SettingsStore extends UserSettings {
   setDynamicsBonus(on: boolean): void
   setMixLevel(channel: MixChannel, level: number): void
   setMix(mix: MixLevels): void
+  setAccent(accent: AccentName): void
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -39,6 +44,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   scrollSpeed: 1.0,
   dynamicsBonus: true,
   mix: { ...DEFAULT_MIX },
+  accent: DEFAULT_ACCENT,
 }
 
 /** Ajustes guardados por una versión anterior → versión actual. */
@@ -78,6 +84,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setMixLevel: (channel, level) =>
         set(state => ({ mix: { ...state.mix, [channel]: clampLevel(level) } })),
       setMix: mix => set({ mix: { ...mix } }),
+      setAccent: accent => set({ accent }),
     }),
     {
       name: 'drumhero-settings',
@@ -86,3 +93,11 @@ export const useSettingsStore = create<SettingsStore>()(
     },
   ),
 )
+
+/** Aplica el acento guardado y lo sigue al cambiar. Retorna la desuscripción. */
+export function syncAccentWithSettings(root: HTMLElement = document.documentElement): () => void {
+  applyAccent(useSettingsStore.getState().accent, root)
+  return useSettingsStore.subscribe((state, prev) => {
+    if (state.accent !== prev.accent) applyAccent(state.accent, root)
+  })
+}

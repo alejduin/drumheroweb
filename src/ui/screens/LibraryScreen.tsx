@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import type { SongBundle } from '@/game/GameSession'
+import type { SongRef } from '@/game/lastSession'
 import { builtinBundle, localAnalysisBundle } from '@/songs/songBundle'
 import { loadChart } from '@/songs/songLoader'
 import { SONG_LIBRARY } from '@/songs/songLibrary'
 import type { SongMeta } from '@/songs/songLibrary'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useProgressStore } from '@/store/progressStore'
+import { useSessionStore } from '@/store/sessionStore'
 import { AccountPanel } from '@/ui/account/AccountPanel'
 import { LibrarySongRow } from '@/ui/library/LibrarySongRow'
 import { Button, Panel, Stars } from '@/ui/primitives'
@@ -18,8 +20,8 @@ const LEVEL_LABEL: Record<SongMeta['difficulty'], string> = {
 }
 
 interface LibraryScreenProps {
-  /** songId solo para las canciones importadas (para marcar la fecha de juego). */
-  onSongReady: (bundle: SongBundle, songId: string | null) => void
+  /** ref = de dónde recargarla (Continuar); null para el análisis local. */
+  onSongReady: (bundle: SongBundle, ref: SongRef | null) => void
   onImport: () => void
   /** Abre Importar con el progreso de un análisis en curso. */
   onOpenImport: (songId: string) => void
@@ -48,11 +50,11 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
     }
   }, [])
 
-  async function run(key: string, load: () => Promise<SongBundle>, songId: string | null = null) {
+  async function run(key: string, load: () => Promise<SongBundle>, ref: SongRef | null = null) {
     setLoading(key)
     setError(null)
     try {
-      onSongReady(await load(), songId)
+      onSongReady(await load(), ref)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar la canción')
     } finally {
@@ -117,7 +119,10 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
                   tracker={trackers[song.id] ?? null}
                   busy={loading === song.id}
                   onPlay={() =>
-                    void run(song.id, () => useLibraryStore.getState().bundle(song.id), song.id)
+                    void run(song.id, () => useLibraryStore.getState().bundle(song.id), {
+                      kind: 'library',
+                      id: song.id,
+                    })
                   }
                   onOpen={() => onOpenImport(song.id)}
                   onRetry={() => useLibraryStore.getState().retry(song.id)}
@@ -127,6 +132,9 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
                       useLibraryStore
                         .getState()
                         .cancel(song.id)
+                        .then(() =>
+                          useSessionStore.getState().forget({ kind: 'library', id: song.id }),
+                        )
                         .catch(() =>
                           setError(`No se pudo borrar «${song.title}»: revisa la conexión.`),
                         )
@@ -147,7 +155,10 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
                 type="button"
                 disabled={loading !== null}
                 onClick={() =>
-                  void run(meta.id, async () => builtinBundle(await loadChart(meta.id)))
+                  void run(meta.id, async () => builtinBundle(await loadChart(meta.id)), {
+                    kind: 'builtin',
+                    id: meta.id,
+                  })
                 }
                 className="flex cursor-pointer items-center justify-between rounded-md bg-surface-2 p-4 text-left transition hover:bg-track disabled:cursor-wait disabled:opacity-50"
               >

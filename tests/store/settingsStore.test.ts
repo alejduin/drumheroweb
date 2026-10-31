@@ -23,3 +23,18 @@ describe('migrateSettings', () => {
     expect(migrateSettings({ mix }, 2).mix).toBe(mix)
   })
 })
+
+describe('syncAccentWithSettings', () => {
+  it('aplica el acento guardado y lo sigue al cambiar', async () => {
+    const { syncAccentWithSettings, useSettingsStore } = await import('@/store/settingsStore')
+    const root = document.createElement('div')
+    useSettingsStore.getState().setAccent('blue')
+    const stop = syncAccentWithSettings(root)
+    expect(root.getAttribute('data-accent')).toBe('blue')
+    useSettingsStore.getState().setAccent('violet') // el acento por defecto no lleva atributo
+    expect(root.hasAttribute('data-accent')).toBe(false)
+    stop()
+    useSettingsStore.getState().setAccent('pink')
+    expect(root.hasAttribute('data-accent')).toBe(false)
+  })
+})
