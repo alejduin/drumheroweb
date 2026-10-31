@@ -10,6 +10,7 @@ export function remoteSong(patch: Partial<RemoteSong> = {}): RemoteSong {
     fileName: 'back in black.mp3',
     durationS: 255,
     youtubeUrl: null,
+    youtubeOffsetMs: 0,
     status: 'ready',
     error: null,
     summary: null,
@@ -28,6 +29,7 @@ export class FakeRemoteLibrary implements RemoteLibrary {
   deleted: string[] = []
   played: Array<[string, number]> = []
   fetched: string[] = []
+  offsets: Array<[string, number]> = []
 
   private check() {
     if (this.offline) return Promise.reject(new Error('sin red'))
@@ -62,5 +64,12 @@ export class FakeRemoteLibrary implements RemoteLibrary {
   async markPlayed(songId: string, at: number) {
     await this.check()
     this.played.push([songId, at])
+  }
+
+  async setYoutubeOffset(songId: string, offsetMs: number) {
+    await this.check()
+    this.offsets.push([songId, offsetMs])
+    const song = this.songs.find(s => s.id === songId)
+    if (song) song.youtubeOffsetMs = offsetMs
   }
 }

@@ -62,6 +62,11 @@ export interface LibraryState {
   /** Todo lo necesario para jugar, desde IndexedDB (funciona sin red). */
   bundle(id: string): Promise<SongBundle>
   markPlayed(id: string): Promise<void>
+  /**
+   * Guarda el offset del video (asistente de sincronía) en la canción y su chart.
+   * Lanza si no se pudo subir a la nube (la copia local ya quedó guardada).
+   */
+  setYoutubeOffset(id: string, offsetMs: number): Promise<void>
 }
 
 export function createLibraryStore(deps: LibraryDeps) {
@@ -306,6 +311,15 @@ export function createLibraryStore(deps: LibraryDeps) {
         const song = await updateSong(id, { lastPlayedAt: at })
         if (remote && song?.cloud) await remote.markPlayed(id, at).catch(() => {})
       },
+
+      async setYoutubeOffset(id, offsetMs) {
+        const library = await db()
+        const song = await updateSong(id, { youtubeOffsetMs: offsetMs })
+        if (!song) throw new Error('La canción ya no está en la biblioteca.')
+        const chart = await library.getAsset(id, 'chart')
+        if (chart) await library.putAssets(id, { chart: { ...chart, youtubeOffsetMs: offsetMs } })
+        if (remote && song.cloud) await remote.setYoutubeOffset(id, offsetMs)
+      },
     }
   })
 }
@@ -325,7 +339,13 @@ function toBundle(
   const stems = drums && backing ? { drums, backing } : null
   if (!stems && !audio) throw new Error('Falta el audio de la canción.')
   return {
-    chart: { ...chart, title: song.title, artist: song.artist, youtubeUrl: song.youtubeUrl },
+    chart: {
+      ...chart,
+      title: song.title,
+      artist: song.artist,
+      youtubeUrl: song.youtubeUrl,
+      youtubeOffsetMs: song.youtubeOffsetMs ?? chart.youtubeOffsetMs,
+    },
     audio: { stems, original: audio ?? null },
     peaks: peaks ?? null,
     fileName: song.fileName,

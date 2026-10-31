@@ -13,6 +13,8 @@ import { Button, SectionLabel } from '@/ui/primitives'
 interface ImportScreenProps {
   onPlay: (bundle: SongBundle, songId: string) => void
   onBack: () => void
+  /** Abre el asistente de sincronía del video. */
+  onSyncVideo: (songId: string) => void
   /** Abre el progreso de una canción que ya se está analizando. */
   initialSongId?: string | null
 }
@@ -23,7 +25,12 @@ interface PickedFile {
 }
 
 /** Importar: elegir el audio, analizarlo con el worker y jugarlo (PLAN_V2 B13). */
-export function ImportScreen({ onPlay, onBack, initialSongId = null }: ImportScreenProps) {
+export function ImportScreen({
+  onPlay,
+  onBack,
+  onSyncVideo,
+  initialSongId = null,
+}: ImportScreenProps) {
   const workerStatus = useLibraryStore(s => s.workerStatus)
   const cloud = useLibraryStore(s => s.cloud)
   const checkWorker = useLibraryStore(s => s.checkWorker)
@@ -242,6 +249,7 @@ export function ImportScreen({ onPlay, onBack, initialSongId = null }: ImportScr
           nowMs={nowMs}
           workerOffline={workerStatus === 'offline'}
           onPlay={() => void play()}
+          onSyncVideo={() => songId && onSyncVideo(songId)}
           onRetry={() => songId && useLibraryStore.getState().retry(songId)}
           onCancel={() => songId && void useLibraryStore.getState().cancel(songId)}
         />

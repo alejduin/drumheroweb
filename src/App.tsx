@@ -15,6 +15,7 @@ import { GameScreen } from '@/ui/screens/GameScreen'
 import { HomeScreen } from '@/ui/screens/HomeScreen'
 import { ResultsScreen } from '@/ui/screens/ResultsScreen'
 import { SettingsScreen } from '@/ui/screens/SettingsScreen'
+import { SyncWizard } from '@/ui/screens/SyncWizard'
 import { useAuthStore } from '@/store/authStore'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useSessionStore } from '@/store/sessionStore'
@@ -22,7 +23,15 @@ import { syncAccentWithSettings } from '@/store/settingsStore'
 import { ImportScreen } from '@/ui/screens/ImportScreen'
 import { LibraryScreen } from '@/ui/screens/LibraryScreen'
 
-type Screen = 'home' | 'library' | 'import' | 'game' | 'results' | 'settings' | 'calibration'
+type Screen =
+  | 'home'
+  | 'library'
+  | 'import'
+  | 'game'
+  | 'results'
+  | 'settings'
+  | 'calibration'
+  | 'sync'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
@@ -37,6 +46,9 @@ export default function App() {
   const [calibrationReturn, setCalibrationReturn] = useState<Screen>('settings')
   // Importar puede abrirse con el progreso de un análisis en curso
   const [importSongId, setImportSongId] = useState<string | null>(null)
+  // Asistente de sincronía del video: canción y pantalla a la que vuelve
+  const [syncSongId, setSyncSongId] = useState<string | null>(null)
+  const [syncReturn, setSyncReturn] = useState<Screen>('library')
   const { connect } = useMidi()
 
   // Auto-conectar MIDI al montar (solo si el browser lo soporta)
@@ -70,6 +82,13 @@ export default function App() {
   const openImport = (songId: string | null = null) => {
     setImportSongId(songId)
     setScreen('import')
+  }
+
+  const openSync = (songId: string, from: Screen) => {
+    setSyncSongId(songId)
+    setSyncReturn(from)
+    if (from === 'import') setImportSongId(songId)
+    setScreen('sync')
   }
 
   const play = (b: SongBundle, ref: SongRef | null, startAt = 0) => {
@@ -122,6 +141,7 @@ export default function App() {
           onSongReady={play}
           onImport={() => openImport()}
           onOpenImport={openImport}
+          onSyncVideo={id => openSync(id, 'library')}
           onBack={() => setScreen('home')}
         />
       )}
@@ -130,8 +150,13 @@ export default function App() {
         <ImportScreen
           initialSongId={importSongId}
           onPlay={(b, id) => play(b, { kind: 'library', id })}
+          onSyncVideo={id => openSync(id, 'import')}
           onBack={() => setScreen('library')}
         />
+      )}
+
+      {screen === 'sync' && syncSongId && (
+        <SyncWizard songId={syncSongId} onDone={() => setScreen(syncReturn)} />
       )}
 
       {screen === 'game' && bundle && (

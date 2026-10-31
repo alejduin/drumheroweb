@@ -23,6 +23,7 @@ interface LibrarySongRowProps {
   workerOffline?: boolean
   onPlay: () => void
   onOpen: () => void
+  onSyncVideo: () => void
   onRetry: () => void
   onRemove: () => void
 }
@@ -36,6 +37,7 @@ export function LibrarySongRow({
   workerOffline = false,
   onPlay,
   onOpen,
+  onSyncVideo,
   onRetry,
   onRemove,
 }: LibrarySongRowProps) {
@@ -68,6 +70,11 @@ export function LibrarySongRow({
         {playable && (
           <Button size="sm" variant="primary" disabled={busy} onClick={onPlay}>
             {busy ? 'Cargando…' : 'Jugar'}
+          </Button>
+        )}
+        {playable && song.youtubeUrl && (
+          <Button size="sm" onClick={onSyncVideo}>
+            Sincronizar video
           </Button>
         )}
         {song.status === 'analyzing' && (

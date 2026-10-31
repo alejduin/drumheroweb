@@ -29,6 +29,7 @@ export interface RemoteSong {
   fileName: string
   durationS: number
   youtubeUrl: string | null
+  youtubeOffsetMs: number
   status: SongStatus
   error: { code: string; message: string } | null
   summary: JobSummary | null
@@ -47,6 +48,8 @@ export interface RemoteLibrary {
   /** Borra la canción, su audio y sus stems. */
   deleteSong(songId: string): Promise<void>
   markPlayed(songId: string, at: number): Promise<void>
+  /** Offset del video (asistente de sincronía). */
+  setYoutubeOffset(songId: string, offsetMs: number): Promise<void>
 }
 
 interface CloudDeps {
@@ -62,6 +65,7 @@ interface SongRow {
   file_name: string
   duration_s: number
   youtube_url: string | null
+  youtube_offset_ms: number
   status: SongStatus
   error: RemoteSong['error']
   summary: JobSummary | null
@@ -267,6 +271,7 @@ export function createCloudClient(
         fileName: row.file_name,
         durationS: row.duration_s,
         youtubeUrl: row.youtube_url,
+        youtubeOffsetMs: row.youtube_offset_ms ?? 0,
         status: row.status,
         error: row.error,
         summary: row.summary,
@@ -313,6 +318,10 @@ export function createCloudClient(
           .update({ last_played_at: new Date(at).toISOString() })
           .eq('id', songId),
       )
+    },
+
+    async setYoutubeOffset(songId, offsetMs) {
+      unwrap(await sb.from('songs').update({ youtube_offset_ms: offsetMs }).eq('id', songId))
     },
   }
 }

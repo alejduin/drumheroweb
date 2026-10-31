@@ -26,11 +26,18 @@ interface LibraryScreenProps {
   onImport: () => void
   /** Abre Importar con el progreso de un análisis en curso. */
   onOpenImport: (songId: string) => void
+  onSyncVideo: (songId: string) => void
   onBack: () => void
 }
 
 /** Biblioteca: canciones importadas (IndexedDB) + incluidas + análisis local. */
-export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: LibraryScreenProps) {
+export function LibraryScreen({
+  onSongReady,
+  onImport,
+  onOpenImport,
+  onSyncVideo,
+  onBack,
+}: LibraryScreenProps) {
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const progress = useProgressStore(s => s.songs)
@@ -130,6 +137,7 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
                     })
                   }
                   onOpen={() => onOpenImport(song.id)}
+                  onSyncVideo={() => onSyncVideo(song.id)}
                   onRetry={() => useLibraryStore.getState().retry(song.id)}
                   onRemove={() => {
                     const verb = song.status === 'analyzing' ? 'Cancelar el análisis de' : 'Borrar'

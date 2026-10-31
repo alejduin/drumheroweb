@@ -23,7 +23,8 @@ interface VideoPanelProps {
   /** Tiempo de video = tiempo de canción + offset (ms). */
   offsetMs: number
   clock: SyncClock
-  onHide: () => void
+  /** Sin esto no hay botón de ocultar (asistente de sincronía). */
+  onHide?: () => void
 }
 
 type VideoStatus = 'none' | 'loading' | 'ready' | 'error'
@@ -120,15 +121,17 @@ export function VideoPanel({ youtubeUrl, offsetMs, clock, onHide }: VideoPanelPr
         <Chip tone="strong">YouTube</Chip>
         <Chip className="truncate">{chip}</Chip>
       </div>
-      <IconButton
-        variant="ghost"
-        aria-label="Ocultar video (V)"
-        title="Ocultar video (V)"
-        onClick={onHide}
-        className="absolute top-2.5 right-2.5"
-      >
-        <CloseIcon />
-      </IconButton>
+      {onHide && (
+        <IconButton
+          variant="ghost"
+          aria-label="Ocultar video (V)"
+          title="Ocultar video (V)"
+          onClick={onHide}
+          className="absolute top-2.5 right-2.5"
+        >
+          <CloseIcon />
+        </IconButton>
+      )}
     </div>
   )
 }

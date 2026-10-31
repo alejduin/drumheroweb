@@ -14,6 +14,7 @@ interface AnalysisPanelProps {
   /** El worker dejó de dar señales de vida. */
   workerOffline?: boolean
   onPlay: () => void
+  onSyncVideo: () => void
   onRetry: () => void
   onCancel: () => void
 }
@@ -27,6 +28,7 @@ export function AnalysisPanel({
   nowMs,
   workerOffline = false,
   onPlay,
+  onSyncVideo,
   onRetry,
   onCancel,
 }: AnalysisPanelProps) {
@@ -106,11 +108,16 @@ export function AnalysisPanel({
       )}
 
       <div className="flex gap-3">
-        {/* El editor y la sincronización del video llegan en la Fase C */}
+        {/* El editor llega en C3 */}
         <Button className="flex-1" disabled title="Llega con el editor (Fase C)">
           Revisar en el editor
         </Button>
-        <Button className="flex-1" disabled title="Llega con el video (Fase C)">
+        <Button
+          className="flex-1"
+          disabled={!finished || !song?.youtubeUrl}
+          title={song && !song.youtubeUrl ? 'La canción no tiene video enlazado' : undefined}
+          onClick={onSyncVideo}
+        >
           Sincronizar video
         </Button>
         <Button

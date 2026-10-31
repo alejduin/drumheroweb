@@ -19,6 +19,8 @@ export interface LibrarySong {
   durationS: number
   /** URL de YouTube elegida al importar (solo video silenciado). */
   youtubeUrl: string | null
+  /** Offset del video elegido en el asistente (ms); si falta, el del chart. */
+  youtubeOffsetMs?: number
   status: SongStatus
   /** Trabajo del worker mientras se analiza (para reanudar al recargar). */
   jobId: string | null

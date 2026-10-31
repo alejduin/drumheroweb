@@ -155,4 +155,34 @@ describe('biblioteca en la nube', () => {
     expect(store.getState().trackers).toEqual({})
     expect(client.polls).toBe(0)
   })
+
+  it('el offset del video se guarda en la canción, el chart y la nube', async () => {
+    const { store, remote, dbName } = setup()
+    remote.songs = [
+      remoteSong({ youtubeUrl: 'https://youtube.com/watch?v=abc', youtubeOffsetMs: 0 }),
+    ]
+    await store.getState().sync()
+    await store.getState().bundle('remote-1')
+
+    await store.getState().setYoutubeOffset('remote-1', 1240)
+    expect(remote.offsets).toEqual([['remote-1', 1240]])
+    expect((await store.getState().bundle('remote-1')).chart.youtubeOffsetMs).toBe(1240)
+    const db = await openLibraryDb(dbName)
+    expect((await db.getAsset('remote-1', 'chart'))?.youtubeOffsetMs).toBe(1240)
+    db.close()
+
+    // Otro equipo trae el offset de la nube
+    const other = setup(remote)
+    await other.store.getState().sync()
+    expect((await other.store.getState().bundle('remote-1')).chart.youtubeOffsetMs).toBe(1240)
+  })
+
+  it('sin red el offset queda en este equipo y avisa', async () => {
+    const { store, remote } = setup()
+    remote.songs = [remoteSong()]
+    await store.getState().sync()
+    remote.offline = true
+    await expect(store.getState().setYoutubeOffset('remote-1', -80)).rejects.toThrow()
+    expect(store.getState().songs[0].youtubeOffsetMs).toBe(-80)
+  })
 })
