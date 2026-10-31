@@ -198,3 +198,75 @@ describe('editor de partitura', () => {
     expect(chart.difficulties.full.notes.map(n => n.t)).toEqual([0.5, 1, 5.125])
   })
 })
+
+describe('grabar con el kit (replaceRange)', () => {
+  const NOTES = [note(0, 'kick'), note(2, 'kick'), note(2.5, 'snare', 0.3), note(4, 'crash')]
+  const hit = (t: number, piece: ChartNote['piece'], velocity = 100) => ({ t, piece, velocity })
+
+  it('reemplaza solo las notas del rango por los golpes cuantizados', () => {
+    const state = run(createEditorState(chartWith(NOTES)), {
+      type: 'replaceRange',
+      fromMeasure: 2,
+      toMeasure: 2,
+      hits: [hit(1.97, 'kick'), hit(2.51, 'snare'), hit(3.13, 'hihat_closed', 40)],
+    })
+    expect(summary(state)).toEqual([
+      '0:kick',
+      '2:kick',
+      '2.5:snare',
+      '3.125:hihat_closed',
+      '4:crash',
+    ])
+    const recorded = state.notes.filter(n => n.t >= 2 && n.t < 4)
+    expect(recorded.every(n => n.confidence === 1)).toBe(true)
+    expect(recorded.map(n => n.tRaw)).toEqual([1.97, 2.51, 3.13])
+    expect(recorded[2].velocity).toBe(40)
+  })
+
+  it('descarta la cuenta y lo que cae después del rango', () => {
+    const state = run(createEditorState(chartWith(NOTES)), {
+      type: 'replaceRange',
+      fromMeasure: 2,
+      toMeasure: 2,
+      hits: [hit(1.2, 'snare'), hit(3.97, 'kick'), hit(4.1, 'kick')],
+    })
+    // 3.97 se cuantiza a 4 (fuera del rango); el crash de 4 se conserva
+    expect(summary(state)).toEqual(['0:kick', '4:crash'])
+  })
+
+  it('un doble disparo del pad queda en una sola nota', () => {
+    const state = run(createEditorState(chartWith(NOTES)), {
+      type: 'replaceRange',
+      fromMeasure: 2,
+      toMeasure: 2,
+      hits: [hit(2.49, 'snare'), hit(2.51, 'snare')],
+    })
+    expect(summary(state)).toEqual(['0:kick', '2.5:snare', '4:crash'])
+  })
+
+  it('se deshace de una vez y las notas nuevas tienen ids propios', () => {
+    const start = createEditorState(chartWith(NOTES))
+    const recorded = run(start, {
+      type: 'replaceRange',
+      fromMeasure: 1,
+      toMeasure: 2,
+      hits: [hit(0.5, 'kick'), hit(1, 'kick')],
+    })
+    const newIds = recorded.notes.filter(n => n.t < 4).map(n => n.id)
+    expect(new Set(newIds).size).toBe(newIds.length)
+    expect(newIds.every(id => id >= start.nextId)).toBe(true)
+    expect(recorded.nextId).toBe(start.nextId + 2)
+    expect(summary(run(recorded, { type: 'undo' }))).toEqual(summary(start))
+  })
+
+  it('el chart guardado sigue siendo válido', () => {
+    const chart = chartWith(NOTES)
+    const state = run(createEditorState(chart), {
+      type: 'replaceRange',
+      fromMeasure: 2,
+      toMeasure: 3,
+      hits: [hit(2.02, 'tom1', 120), hit(4.6, 'ride', 70)],
+    })
+    expect(chartIssues(chartWithEdits(chart, state))).toEqual([])
+  })
+})

@@ -5,6 +5,7 @@ import { needsReview } from '@/chart/notes'
 import { CHORD_EPSILON_S } from '@/renderer/staffLayout'
 import { DEFAULT_DIVISION, roundTime, snapTime } from './quantize'
 import type { Division } from './quantize'
+import type { RecordedHit } from './recording'
 
 // ─── Estado del editor de partitura (PLAN_V2 C3) ─────────────────────────────
 // Reducer puro sobre las notas de la dificultad completa. Cada nota lleva un id
@@ -45,6 +46,8 @@ export type EditorAction =
   | { type: 'confirm' }
   | { type: 'confirmAll' }
   | { type: 'requantize'; fromMeasure: number; toMeasure: number; division: Division }
+  /** Los golpes grabados con el kit reemplazan las notas de esos compases (C5). */
+  | { type: 'replaceRange'; fromMeasure: number; toMeasure: number; hits: readonly RecordedHit[] }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'saved' }
@@ -185,6 +188,31 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         return { ...n, t: snapTime(state.grid, source, action.division, state.durationS) }
       })
       return commit(state, normalizeNotes(notes))
+    }
+    case 'replaceRange': {
+      const { startS } = measureRange(state.grid, action.fromMeasure, state.durationS)
+      const { endS } = measureRange(state.grid, action.toMeasure, state.durationS)
+      const inRange = (t: number) => t >= startS && t < endS
+      // Se cuantiza primero: un golpe un poco antes del compás cae en su primer tiempo
+      const recorded: EditorNote[] = []
+      for (const hit of action.hits) {
+        const t = snapTime(state.grid, hit.t, state.division, state.durationS)
+        if (!inRange(t)) continue
+        recorded.push({
+          id: state.nextId + recorded.length,
+          t,
+          tRaw: roundTime(hit.t),
+          piece: hit.piece,
+          velocity: Math.min(Math.max(Math.round(hit.velocity), 1), 127),
+          confidence: REVIEWED_CONFIDENCE,
+        })
+      }
+      const kept = state.notes.filter(n => !inRange(n.t))
+      // Un doble disparo del pad (misma pieza en la misma casilla) queda en una nota
+      return commit(state, normalizeNotes([...kept, ...recorded]), {
+        nextId: state.nextId + recorded.length,
+        selection: [],
+      })
     }
     case 'undo': {
       const previous = state.past[state.past.length - 1]

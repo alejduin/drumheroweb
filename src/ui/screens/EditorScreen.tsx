@@ -24,6 +24,7 @@ import { selectPhase, useGameStore } from '@/store/gameStore'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { EditorCanvas } from '@/ui/editor/EditorCanvas'
+import { RecordPanel } from '@/ui/editor/RecordPanel'
 import type { EditorView } from '@/ui/editor/EditorCanvas'
 import { Button, Panel, SectionLabel, SegmentedControl } from '@/ui/primitives'
 import { cn } from '@/ui/primitives/cn'
@@ -427,6 +428,14 @@ function EditorLayout({
               Vuelve a colocar las notas desde lo que detectó la IA, con la rejilla elegida.
             </span>
           </div>
+
+          <RecordPanel
+            session={session}
+            currentMeasure={() => measureAt(chart.grid, view.current.startS + 0.25)}
+            onRecorded={(fromMeasure, toMeasure, hits) =>
+              dispatch({ type: 'replaceRange', fromMeasure, toMeasure, hits })
+            }
+          />
         </Panel>
 
         <Panel
