@@ -1,5 +1,5 @@
 import type { TrackerState } from '@/library/jobTracker'
-import { trackerHeadline } from '@/library/importView'
+import { stageSummary } from '@/library/importView'
 import { STATUS_LABELS } from '@/library/status'
 import type { SongStatus } from '@/library/status'
 import { formatClock } from '@/game/format'
@@ -18,6 +18,9 @@ interface LibrarySongRowProps {
   song: LibrarySong
   tracker: TrackerState | null
   busy: boolean
+  /** Hora actual (cambia cada segundo durante el análisis). */
+  nowMs?: number
+  workerOffline?: boolean
   onPlay: () => void
   onOpen: () => void
   onRetry: () => void
@@ -29,6 +32,8 @@ export function LibrarySongRow({
   song,
   tracker,
   busy,
+  nowMs,
+  workerOffline = false,
   onPlay,
   onOpen,
   onRetry,
@@ -37,9 +42,7 @@ export function LibrarySongRow({
   const playable = song.status === 'ready' || song.status === 'needs_review'
   const detail =
     song.status === 'analyzing'
-      ? tracker
-        ? trackerHeadline(tracker)
-        : 'Analizando…'
+      ? stageSummary(tracker, { nowMs, workerOffline })
       : song.status === 'failed'
         ? (song.error?.message ?? 'El análisis falló')
         : [

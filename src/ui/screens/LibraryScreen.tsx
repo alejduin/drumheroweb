@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import type { SongBundle } from '@/game/GameSession'
 import type { SongRef } from '@/game/lastSession'
+import { useAnalysisWatch } from '@/hooks/useAnalysisWatch'
 import { builtinBundle, localAnalysisBundle } from '@/songs/songBundle'
 import { loadChart } from '@/songs/songLoader'
 import { SONG_LIBRARY } from '@/songs/songLibrary'
@@ -37,6 +38,8 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
   const loaded = useLibraryStore(s => s.loaded)
   const trackers = useLibraryStore(s => s.trackers)
   const cloud = useLibraryStore(s => s.cloud)
+  const workerOffline = useLibraryStore(s => s.workerStatus === 'offline')
+  const nowMs = useAnalysisWatch(songs.some(s => s.status === 'analyzing'))
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -118,6 +121,8 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
                   song={song}
                   tracker={trackers[song.id] ?? null}
                   busy={loading === song.id}
+                  nowMs={nowMs}
+                  workerOffline={workerOffline}
                   onPlay={() =>
                     void run(song.id, () => useLibraryStore.getState().bundle(song.id), {
                       kind: 'library',

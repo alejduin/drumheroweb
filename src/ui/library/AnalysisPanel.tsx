@@ -9,6 +9,10 @@ interface AnalysisPanelProps {
   /** Nombre del archivo elegido antes de analizar. */
   pendingFileName: string | null
   playing: boolean
+  /** Hora actual (cambia cada segundo durante el análisis) para el tiempo transcurrido. */
+  nowMs?: number
+  /** El worker dejó de dar señales de vida. */
+  workerOffline?: boolean
   onPlay: () => void
   onRetry: () => void
   onCancel: () => void
@@ -20,6 +24,8 @@ export function AnalysisPanel({
   tracker,
   pendingFileName,
   playing,
+  nowMs,
+  workerOffline = false,
   onPlay,
   onRetry,
   onCancel,
@@ -44,10 +50,12 @@ export function AnalysisPanel({
       className="min-w-0 flex-1 gap-[18px] rounded-[16px] p-6"
     >
       <p aria-live="polite" className={failed ? 'text-sm text-miss' : 'text-xs text-muted'}>
-        {song ? trackerHeadline(tracker ?? fallbackTracker(song)) : trackerHeadline(null)}
+        {song
+          ? trackerHeadline(tracker ?? fallbackTracker(song), { nowMs, workerOffline })
+          : trackerHeadline(null)}
       </p>
 
-      {stageRows(tracker).map((row, i) => (
+      {stageRows(tracker, nowMs).map((row, i) => (
         <StepRow
           key={row.id}
           index={i + 1}

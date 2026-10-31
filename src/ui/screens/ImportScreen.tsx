@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { SongBundle } from '@/game/GameSession'
+import { useAnalysisWatch } from '@/hooks/useAnalysisWatch'
 import { readAudioFile } from '@/library/readAudioFile'
 import { parseYouTubeId, youTubeWatchUrl } from '@/library/youtube'
 import { useLibraryStore } from '@/store/libraryStore'
@@ -39,6 +40,7 @@ export function ImportScreen({ onPlay, onBack, initialSongId = null }: ImportScr
   const [playError, setPlayError] = useState<string | null>(null)
   const song = useLibraryStore(s => (songId ? (s.songs.find(x => x.id === songId) ?? null) : null))
   const tracker = useLibraryStore(s => (songId ? (s.trackers[songId] ?? null) : null))
+  const nowMs = useAnalysisWatch(song?.status === 'analyzing')
 
   useEffect(() => {
     void checkWorker()
@@ -237,6 +239,8 @@ export function ImportScreen({ onPlay, onBack, initialSongId = null }: ImportScr
           tracker={tracker}
           pendingFileName={picked?.file.name ?? null}
           playing={playing}
+          nowMs={nowMs}
+          workerOffline={workerStatus === 'offline'}
           onPlay={() => void play()}
           onRetry={() => songId && useLibraryStore.getState().retry(songId)}
           onCancel={() => songId && void useLibraryStore.getState().cancel(songId)}
