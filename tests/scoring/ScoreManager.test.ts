@@ -155,6 +155,18 @@ describe('agregados', () => {
     expect(byMeasure[2].tally).toEqual({ perfect: 4, close: 0, miss: 4 })
   })
 
+  it('por compás y grupo de piezas (compases débiles con su pieza)', () => {
+    const { byMeasure } = results()
+    // compás 3: fallan las notas pares (bombo y hi-hat), aciertan caja y toms
+    expect(byMeasure[2].byGroup).toEqual({
+      kick: { perfect: 0, close: 0, miss: 2 },
+      snare: { perfect: 2, close: 0, miss: 0 },
+      hihat: { perfect: 0, close: 0, miss: 2 },
+      toms: { perfect: 2, close: 0, miss: 0 },
+    })
+    expect(byMeasure[0].byGroup.cymbals).toBeUndefined()
+  })
+
   it('por sección suma sus compases', () => {
     const { bySection } = results()
     expect(bySection.map(s => [s.name, s.precision])).toEqual([

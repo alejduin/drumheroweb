@@ -46,6 +46,8 @@ export interface MeasureStats {
   measure: number
   tally: Tally
   precision: number | null
+  /** Solo los grupos con notas evaluadas en el compás. */
+  byGroup: Partial<Record<PieceGroup, Tally>>
 }
 
 export interface SectionStats {
@@ -93,6 +95,7 @@ export class ScoreManager {
   private last: TimedJudgement | null = null
   private byGroup = new Map<PieceGroup, Tally>()
   private byMeasure = new Map<number, Tally>()
+  private byMeasureGroup = new Map<number, Map<PieceGroup, Tally>>()
 
   constructor(ctx: ScoreContext) {
     this.ctx = ctx
@@ -147,6 +150,7 @@ export class ScoreManager {
     this.last = null
     this.byGroup.clear()
     this.byMeasure.clear()
+    this.byMeasureGroup.clear()
   }
 
   snapshot(): ScoreSnapshot {
@@ -172,7 +176,14 @@ export class ScoreManager {
 
     const byMeasure = [...this.byMeasure.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([measure, tally]) => ({ measure, tally: { ...tally }, precision: precisionOf(tally) }))
+      .map(([measure, tally]) => ({
+        measure,
+        tally: { ...tally },
+        precision: precisionOf(tally),
+        byGroup: Object.fromEntries(
+          [...(this.byMeasureGroup.get(measure) ?? [])].map(([g, t]) => [g, { ...t }]),
+        ),
+      }))
 
     return {
       ...this.snapshot(),
@@ -207,9 +218,19 @@ export class ScoreManager {
       this.counts,
       this.tallyFor(this.byGroup, group),
       this.tallyFor(this.byMeasure, measure),
+      this.tallyFor(this.measureGroups(measure), group),
     ]) {
       tally[judgement]++
     }
+  }
+
+  private measureGroups(measure: number): Map<PieceGroup, Tally> {
+    let groups = this.byMeasureGroup.get(measure)
+    if (!groups) {
+      groups = new Map()
+      this.byMeasureGroup.set(measure, groups)
+    }
+    return groups
   }
 
   private tallyFor<K>(map: Map<K, Tally>, key: K): Tally {

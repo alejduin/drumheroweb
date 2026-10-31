@@ -30,7 +30,7 @@ interface LibraryScreenProps {
 export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: LibraryScreenProps) {
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const bestScores = useProgressStore(s => s.bestScores)
+  const progress = useProgressStore(s => s.songs)
   const songs = useLibraryStore(s => s.songs)
   const loaded = useLibraryStore(s => s.loaded)
   const trackers = useLibraryStore(s => s.trackers)
@@ -140,7 +140,7 @@ export function LibraryScreen({ onSongReady, onImport, onOpenImport, onBack }: L
 
         <Panel title="Incluidas" aside="sin audio: suena una pista silenciosa">
           {SONG_LIBRARY.map(meta => {
-            const best = bestScores[meta.id]
+            const best = progress[meta.id]?.best
             return (
               <button
                 key={meta.id}

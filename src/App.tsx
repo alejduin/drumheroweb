@@ -21,6 +21,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [bundle, setBundle] = useState<SongBundle | null>(null)
   const [results, setResults] = useState<ScoreResults | null>(null)
+  const [playedAt, setPlayedAt] = useState(0)
   // A dónde vuelve Ajustes
   const [settingsReturn, setSettingsReturn] = useState<Screen>('home')
   // Recalibrar desde la partida vuelve a la partida; desde Ajustes, a Ajustes
@@ -67,6 +68,7 @@ export default function App() {
 
   const handleFinished = useCallback((r: ScoreResults) => {
     setResults(r)
+    setPlayedAt(Date.now())
     setScreen('results')
   }, [])
 
@@ -113,6 +115,7 @@ export default function App() {
         <ResultsScreen
           chart={bundle.chart}
           results={results}
+          playedAt={playedAt}
           onRetry={() => setScreen('game')}
           onMenu={() => setScreen('library')}
         />

@@ -19,3 +19,11 @@ export const PIECE_GROUP_OF: Readonly<Record<Piece, PieceGroup>> = {
   crash: 'cymbals',
   ride: 'cymbals',
 }
+
+export const PIECE_GROUP_LABELS: Readonly<Record<PieceGroup, string>> = {
+  kick: 'Bombo',
+  snare: 'Caja',
+  hihat: 'Hi-hat',
+  toms: 'Toms',
+  cymbals: 'Platillos',
+}

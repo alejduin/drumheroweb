@@ -1,69 +1,162 @@
-import { useEffect } from 'react'
-import { starsFor } from '@/constants/scoring'
+import { useEffect, useMemo, useState } from 'react'
+import { LEVEL_POINTS, starsFor } from '@/constants/scoring'
 import type { ChartV2 } from '@/types'
 import { formatPercent, formatScore, formatSignedMs } from '@/game/format'
+import { PRACTICE_TEMPO } from '@/game/sections'
+import { LEVEL_LABELS } from '@/game/songMeta'
+import {
+  buildHeadline,
+  distributionOf,
+  findWeakestMeasures,
+  measureBars,
+  measureSpans,
+  timingTendency,
+} from '@/scoring/analytics'
+import type { SectionPrecision } from '@/scoring/analytics'
+import { PIECE_GROUP_LABELS } from '@/scoring/pieceGroups'
+import { sectionForMeasure } from '@/scoring/ScoreManager'
 import type { ScoreResults } from '@/scoring/ScoreManager'
 import { useProgressStore } from '@/store/progressStore'
-import { Button, Legend, StatTile, Stars } from '@/ui/primitives'
+import { useSettingsStore } from '@/store/settingsStore'
+import { SectionRuler } from '@/ui/game/SectionRuler'
+import { Button, Panel, StatTile, Stars } from '@/ui/primitives'
+import { DistributionBar } from '@/ui/results/DistributionBar'
+import { MeasureHeatmap } from '@/ui/results/MeasureHeatmap'
+import { PieceAccuracyGrid } from '@/ui/results/PieceAccuracyGrid'
+
+// El control de tempo llega con el loop de práctica (Fase D); hoy siempre es 100 %
+const TEMPO = 1
 
 interface ResultsScreenProps {
   chart: ChartV2
   results: ScoreResults
+  /** Momento en que terminó la partida; identifica la partida en el progreso. */
+  playedAt: number
   onRetry: () => void
   onMenu: () => void
 }
 
-/** Resultados mínimos de la partida; B14 los completa según design/Results.dc.html. */
-export function ResultsScreen({ chart, results, onRetry, onMenu }: ResultsScreenProps) {
-  const saveSongScore = useProgressStore(s => s.saveSongScore)
-  const { score, precision, bestCombo, meanDeltaMs, counts } = results
+/** Resultados de la partida (design/Results.dc.html, PLAN_V2 §4.5). */
+export function ResultsScreen({ chart, results, playedAt, onRetry, onMenu }: ResultsScreenProps) {
+  const level = useSettingsStore(s => s.level)
+  const recordPlay = useProgressStore(s => s.recordPlay)
+  // Progreso de antes de esta partida (se lee una vez, antes de guardarla)
+  const [before] = useState(() => useProgressStore.getState().songs[chart.id] ?? null)
+  const { score, precision, bestCombo, bestComboRun, meanDeltaMs, counts, bySection } = results
+
+  const sections = useMemo<SectionPrecision[]>(
+    () =>
+      bySection.map(s => ({ name: s.name, startMeasure: s.startMeasure, precision: s.precision })),
+    [bySection],
+  )
 
   useEffect(() => {
-    saveSongScore(chart.id, score, precision)
-  }, [chart.id, score, precision, saveSongScore])
+    recordPlay(chart.id, { score, precision, playedAt, sections })
+  }, [chart.id, score, precision, playedAt, sections, recordPlay])
+
+  const previous = before?.last ?? null
+  const headline = buildHeadline({ precision, sections }, previous)
+  const isRecord = before !== null && score > before.best.score
+  const timing = timingTendency(meanDeltaMs)
+  const comboSection = bestComboRun ? sectionForMeasure(bySection, bestComboRun.startMeasure) : null
+  const weak = findWeakestMeasures(results.byMeasure)
+  const totalMeasures = chart.grid.downbeats.length
+  const points = LEVEL_POINTS[level]
+
+  const scoreHint =
+    before === null
+      ? 'primera partida'
+      : isRecord
+        ? 'récord personal'
+        : `récord ${formatScore(before.best.score)}`
 
   return (
-    <main className="flex h-full flex-col items-center justify-center gap-8 bg-bg px-6 font-sans text-fg">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <span className="text-[11px] tracking-[0.08em] text-muted uppercase">Resultado</span>
-        <h1 className="text-3xl font-extrabold">
-          {chart.title} — {chart.artist}
-        </h1>
-        <Stars value={starsFor(precision)} />
-      </div>
+    <main className="flex h-full flex-col overflow-y-auto bg-bg font-sans text-fg">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-10">
+        <header className="flex items-end justify-between gap-6">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs tracking-[0.08em] text-muted uppercase">
+              {chart.title} · {LEVEL_LABELS[level]} · Tempo {Math.round(TEMPO * 100)}%
+            </span>
+            <h1 className="text-[34px] font-extrabold tracking-[-0.02em]">{headline}</h1>
+          </div>
+          <Stars value={starsFor(precision)} />
+        </header>
 
-      <div className="grid w-full max-w-4xl grid-cols-4 gap-4">
-        <StatTile size="lg" label="Puntos" value={formatScore(score)} />
-        <StatTile size="lg" label="Precisión" value={formatPercent(precision)} />
-        <StatTile size="lg" label="Mejor combo" value={bestCombo} />
-        <StatTile
-          size="lg"
-          label="Timing"
-          value={meanDeltaMs === null ? '—' : formatSignedMs(meanDeltaMs)}
-          hint={
-            meanDeltaMs === null
-              ? undefined
-              : meanDeltaMs > 0
-                ? 'tarde en promedio'
-                : 'temprano en promedio'
-          }
-        />
-      </div>
+        <div className="grid grid-cols-4 gap-4">
+          <StatTile
+            size="lg"
+            label="Puntos"
+            value={formatScore(score)}
+            hint={scoreHint}
+            hintTone={isRecord ? 'perfect' : 'default'}
+          />
+          <div
+            title={`Precisión = (Perfecto + Cerca) / notas evaluadas. Puntos: Perfecto ${points.perfect}, Cerca ${points.close}, Fallo 0, × combo.`}
+          >
+            <StatTile
+              size="lg"
+              label="Precisión"
+              value={formatPercent(precision)}
+              hint={previous ? `anterior ${formatPercent(previous.precision)}` : undefined}
+              className="h-full"
+            />
+          </div>
+          <StatTile
+            size="lg"
+            label="Mejor combo"
+            value={bestCombo}
+            hint={comboSection ? `en ${comboSection.name}` : undefined}
+          />
+          <StatTile
+            size="lg"
+            label="Timing"
+            value={meanDeltaMs === null ? '—' : formatSignedMs(meanDeltaMs)}
+            hint={timing?.text}
+            hintTone={timing?.tone}
+          />
+        </div>
 
-      <Legend
-        items={[
-          { label: `Perfecto ${counts.perfect}`, color: 'perfect' },
-          { label: `Cerca ${counts.close}`, color: 'close' },
-          { label: `Fallo ${counts.miss}`, color: 'miss' },
-          { label: `Pad incorrecto ${counts.wrongPad}`, color: 'wrong' },
-        ]}
-      />
+        <div className="flex gap-4">
+          <DistributionBar distribution={distributionOf(counts)} wrongPad={counts.wrongPad} />
+          <PieceAccuracyGrid byGroup={results.byGroup} />
+        </div>
 
-      <div className="flex gap-4">
-        <Button variant="primary" onClick={onRetry}>
-          Reintentar
-        </Button>
-        <Button onClick={onMenu}>Elegir otra canción</Button>
+        <Panel
+          title="Precisión por compás"
+          aside="cada barra es un compás · verde ≥ 85 %, ámbar ≥ 72 %, rojo por debajo"
+          className="flex-1"
+        >
+          <MeasureHeatmap bars={measureBars(results.byMeasure, totalMeasures)} />
+          <SectionRuler spans={measureSpans(bySection, totalMeasures)} />
+          <div className="flex-1" />
+          <div className="flex flex-wrap items-center gap-3">
+            {weak && (
+              <Button
+                variant="primary"
+                size="lg"
+                disabled
+                title="La práctica por compases llega en la Fase D"
+              >
+                {weak.startMeasure === weak.endMeasure
+                  ? `Practicar el compás ${weak.startMeasure}`
+                  : `Practicar compases ${weak.startMeasure}–${weak.endMeasure}`}
+                {weak.group && ` (${PIECE_GROUP_LABELS[weak.group].toLowerCase()})`} al{' '}
+                {Math.round(PRACTICE_TEMPO * 100)}%
+              </Button>
+            )}
+            <Button variant={weak ? 'secondary' : 'primary'} size="lg" onClick={onRetry}>
+              Reintentar
+            </Button>
+            <Button size="lg" onClick={onMenu}>
+              Elegir otra canción
+            </Button>
+            <div className="flex-1" />
+            <span className="text-[13px] text-muted">
+              Partida nº {(before?.plays ?? 0) + 1} de esta canción
+            </span>
+          </div>
+        </Panel>
       </div>
     </main>
   )

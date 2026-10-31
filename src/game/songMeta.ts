@@ -1,4 +1,4 @@
-import type { ChartSourceKind, ChartV2, Difficulty } from '@/types'
+import type { ChartSourceKind, ChartV2, Difficulty, Level } from '@/types'
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   basic: 'Básico',
@@ -24,4 +24,10 @@ export function songMeta(
     `${beats}/${unit}`,
     SOURCE_LABELS[chart.source.kind],
   ].join(' · ')
+}
+
+export const LEVEL_LABELS: Record<Level, string> = {
+  beginner: 'Principiante',
+  intermediate: 'Intermedio',
+  expert: 'Experto',
 }

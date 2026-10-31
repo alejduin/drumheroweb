@@ -74,7 +74,7 @@ export function precisionTone(precision: number): PrecisionTone {
   return 'miss'
 }
 
-// Precisión mínima para cada estrella (1 a 5); B14 la ajusta con Resultados
+// Precisión mínima para cada estrella (1 a 5); 91 % = 4 estrellas, como la maqueta de Resultados
 export const STAR_THRESHOLDS = [0.4, 0.6, 0.75, 0.9, 0.99] as const
 
 export type Stars = 0 | 1 | 2 | 3 | 4 | 5
