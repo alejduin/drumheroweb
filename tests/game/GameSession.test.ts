@@ -153,6 +153,28 @@ describe('GameSession', () => {
     expect(ctx.gains.some(g => g.output === session.mixer.input('metronome'))).toBe(true)
   })
 
+  it('genera Básico e Intermedio si el chart solo trae Completo', async () => {
+    const { session } = await open()
+    expect(session.chart.difficulties.basic.notes.length).toBeGreaterThan(0)
+    expect(session.difficulty).toBe('full')
+  })
+
+  it('cambiar la dificultad carga otras notas en la misma posición y reinicia el marcador', async () => {
+    const off = (t: number): ChartNote => ({ t, piece: 'kick', velocity: 80, confidence: 1 })
+    // El bombo en contratiempo de semicorchea no está en Básico
+    const { session } = await open({ chart: chart([...NOTES, off(1.125), off(2.125)]) })
+    session.seek(1.5)
+    await session.play()
+    const position = session.clock.now()
+    session.setDifficulty('basic')
+    expect(session.difficulty).toBe('basic')
+    expect(session.isPlaying).toBe(false)
+    expect(session.clock.now()).toBeCloseTo(position, 6)
+    expect(session.engine.chartNotes.map(n => n.t)).toEqual([1, 2, 3])
+    expect(useGameStore.getState().phase).toBe('paused')
+    expect(useGameStore.getState().hud.score).toBe(0)
+  })
+
   it('dispose quita la suscripción MIDI, cierra el contexto y limpia el store', async () => {
     const { ctx, session, hits } = await open()
     await session.play()

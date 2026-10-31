@@ -1,5 +1,6 @@
 import { matchingPreset } from '@/audio/Mixer'
 import type { MixChannel, MixLevels, MixPreset } from '@/audio/Mixer'
+import { DIFFICULTIES } from '@/types'
 import type { Difficulty } from '@/types'
 import type { AudioMode } from '@/game/GameSession'
 import { formatSignedMs } from '@/game/format'
@@ -21,15 +22,11 @@ const MIX_ROWS: ReadonlyArray<{ channel: MixChannel; label: string }> = [
   { channel: 'samples', label: 'Samples del kit' },
 ]
 
-// Básico e Intermedio necesitan el reductor de dificultad (Fase D)
-const DIFFICULTY_OPTIONS = (['basic', 'intermediate', 'full'] as const).map(value => ({
-  value,
-  label: DIFFICULTY_LABELS[value],
-  disabled: value !== 'full',
-}))
-
 interface SessionSettingsPanelProps {
   difficulty: Difficulty
+  /** Notas de cada dificultad: una vacía no se puede elegir. */
+  difficultyCounts: Readonly<Record<Difficulty, number>>
+  onDifficultyChange: (difficulty: Difficulty) => void
   mix: Readonly<MixLevels>
   audioMode: AudioMode
   onMixChange: (channel: MixChannel, level: number) => void
@@ -42,6 +39,8 @@ interface SessionSettingsPanelProps {
 
 export function SessionSettingsPanel({
   difficulty,
+  difficultyCounts,
+  onDifficultyChange,
   mix,
   audioMode,
   onMixChange,
@@ -52,6 +51,11 @@ export function SessionSettingsPanel({
   onDynamicsBonusChange,
 }: SessionSettingsPanelProps) {
   const preset = matchingPreset(mix)
+  const difficultyOptions = DIFFICULTIES.map(value => ({
+    value,
+    label: DIFFICULTY_LABELS[value],
+    disabled: difficultyCounts[value] === 0,
+  }))
   const noStems = audioMode !== 'stems'
   return (
     <Panel
@@ -64,11 +68,14 @@ export function SessionSettingsPanel({
         <SectionLabel>Dificultad</SectionLabel>
         <SegmentedControl
           aria-label="Dificultad"
-          options={DIFFICULTY_OPTIONS}
+          options={difficultyOptions}
           value={difficulty}
-          onChange={() => {}}
+          onChange={onDifficultyChange}
           fullWidth
         />
+        <span className="text-[11px] text-muted">
+          {difficultyCounts[difficulty]} notas · cambiarla reinicia el marcador
+        </span>
       </div>
 
       <div className="flex flex-col gap-2" title={PHASE_D}>

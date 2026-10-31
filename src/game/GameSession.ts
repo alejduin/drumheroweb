@@ -14,6 +14,7 @@ import { Metronome } from '@/engine/Metronome'
 import type { MetronomeContext } from '@/engine/Metronome'
 import { ScoreManager } from '@/scoring/ScoreManager'
 import { bindScoring, useGameStore } from '@/store/gameStore'
+import { ensureDifficulties } from '@/chart/difficulties'
 import { effectiveSections } from './sections'
 import { computePeaks } from './waveform'
 
@@ -81,6 +82,8 @@ export class GameSession {
 
   private readonly ctx: SessionContext
   private readonly unsubs: Array<() => void>
+  private options: SessionOptions
+  private unbindScoring: () => void
   private disposed = false
 
   private constructor(
@@ -91,7 +94,9 @@ export class GameSession {
     deps: SessionDeps,
   ) {
     this.ctx = ctx
-    this.chart = bundle.chart
+    // El worker solo emite `full`: Básico e Intermedio se generan aquí si faltan
+    this.chart = ensureDifficulties(bundle.chart)
+    this.options = options
     this.fileName = bundle.fileName
     this.sections = effectiveSections(bundle.chart)
     this.mixer = new Mixer(ctx, options.mix)
@@ -111,21 +116,8 @@ export class GameSession {
       transport: this.player,
       scheduler: deps.scheduler,
     })
-    this.engine.load(bundle.chart, options.difficulty, {
-      level: options.level,
-      latencyMs: options.latencyMs,
-      dynamicsBonus: options.dynamicsBonus,
-    })
-
-    const scoring = new ScoreManager({
-      notes: this.engine.chartNotes,
-      grid: bundle.chart.grid,
-      sections: this.sections,
-    })
-    this.unsubs = [
-      bindScoring(this.engine, scoring),
-      deps.subscribeHits(hit => this.engine.handleHit(hit)),
-    ]
+    this.unbindScoring = this.loadNotes(options.difficulty)
+    this.unsubs = [deps.subscribeHits(hit => this.engine.handleHit(hit))]
     // Si el audio acaba antes que el chart, el engine no llegaría a durationS
     this.player.onEnded(() => this.engine.finish())
 
@@ -133,7 +125,7 @@ export class GameSession {
     this.metronome = new Metronome({
       ctx,
       clock: this.player.clock,
-      grid: bundle.chart.grid,
+      grid: this.chart.grid,
       output: this.mixer.input('metronome'),
       scheduler: deps.scheduler,
     })
@@ -165,6 +157,37 @@ export class GameSession {
       void ctx.close()
       throw error
     }
+  }
+
+  /** Carga las notas de esa dificultad en el engine y les conecta un marcador nuevo. */
+  private loadNotes(difficulty: Difficulty): () => void {
+    const { level, latencyMs, dynamicsBonus } = this.options
+    this.engine.load(this.chart, difficulty, { level, latencyMs, dynamicsBonus })
+    const scoring = new ScoreManager({
+      notes: this.engine.chartNotes,
+      grid: this.chart.grid,
+      sections: this.sections,
+    })
+    return bindScoring(this.engine, scoring)
+  }
+
+  get difficulty(): Difficulty {
+    return this.options.difficulty
+  }
+
+  /**
+   * Cambia la dificultad sin recargar el audio: la partida se pausa y vuelve a
+   * empezar desde la misma posición con las notas nuevas (el marcador se reinicia).
+   */
+  setDifficulty(difficulty: Difficulty): void {
+    if (this.disposed || difficulty === this.options.difficulty) return
+    const position = this.clock.now()
+    this.pause()
+    this.options = { ...this.options, difficulty }
+    this.unbindScoring()
+    this.unbindScoring = this.loadNotes(difficulty)
+    this.kit.setNotes(this.engine.chartNotes)
+    this.seek(position)
   }
 
   get clock() {
@@ -223,6 +246,7 @@ export class GameSession {
   }
 
   setDynamicsBonus(on: boolean): void {
+    this.options = { ...this.options, dynamicsBonus: on }
     this.engine.setDynamicsBonus(on)
   }
 
@@ -230,6 +254,7 @@ export class GameSession {
     if (this.disposed) return
     this.disposed = true
     this.unsubs.forEach(unsub => unsub())
+    this.unbindScoring()
     this.engine.stop()
     this.metronome.dispose()
     this.kit.dispose()

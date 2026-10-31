@@ -1,5 +1,6 @@
 import { PIECES } from '@/types'
 import type { ChartGrid, ChartNote, ChartV2, Piece } from '@/types'
+import { withGeneratedDifficulties } from '@/chart/difficulties'
 import { measureRange, timeToMeasureBeat } from '@/chart/grid'
 import { needsReview } from '@/chart/notes'
 import { CHORD_EPSILON_S } from '@/renderer/staffLayout'
@@ -246,15 +247,18 @@ function keepExisting(selection: readonly number[], notes: readonly EditorNote[]
   return selection.filter(id => ids.has(id))
 }
 
-/** El chart con las notas editadas (sin ids, tiempos redondeados como el worker). */
+/** El chart con las notas editadas (sin ids, tiempos redondeados como el worker) y las dificultades regeneradas. */
 export function chartWithEdits(chart: ChartV2, state: EditorState): ChartV2 {
-  // Las dificultades Básico e Intermedio se regeneran desde `full` cuando exista D13
   const notes = state.notes.map(note => {
     const plain: ChartNote & { id?: number } = { ...note, t: roundTime(note.t) }
     delete plain.id
     return plain as ChartNote
   })
-  return { ...chart, difficulties: { ...chart.difficulties, full: { notes } } }
+  // Básico e Intermedio se regeneran desde la versión corregida (D13)
+  return withGeneratedDifficulties({
+    ...chart,
+    difficulties: { ...chart.difficulties, full: { notes } },
+  })
 }
 
 export interface ReviewItem {

@@ -5,7 +5,7 @@ import type { MixChannel, MixLevels } from '@/audio/Mixer'
 import { DEFAULT_LEVEL } from '@/constants/scoring'
 import { DEFAULT_ACCENT, applyAccent } from '@/constants/theme'
 import type { AccentName } from '@/constants/theme'
-import type { Level, Piece, ScoreView } from '@/types'
+import type { Difficulty, Level, Piece, ScoreView } from '@/types'
 import { DEFAULT_MIDI_MAP, migrateMidiMap } from '@/midi/midiMap'
 
 export interface UserSettings {
@@ -14,6 +14,8 @@ export interface UserSettings {
   midiMap: Record<number, Piece> // nota MIDI → pieza
   /** Ventanas de acierto (PLAN_V2 D1); la dificultad se elige por partida. */
   level: Level
+  /** Última dificultad elegida en una partida (PLAN_V2 D1). */
+  difficulty: Difficulty
   view: ScoreView
   scrollSpeed: number // multiplicador sobre la velocidad base
   dynamicsBonus: boolean
@@ -27,6 +29,7 @@ interface SettingsStore extends UserSettings {
   setLatencyOffset(ms: number): void
   setMidiMap(map: Record<number, Piece>): void
   setLevel(level: Level): void
+  setDifficulty(difficulty: Difficulty): void
   setView(view: ScoreView): void
   setScrollSpeed(v: number): void
   setDynamicsBonus(on: boolean): void
@@ -40,6 +43,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   midiLatencyOffsetMs: 0,
   midiMap: { ...DEFAULT_MIDI_MAP },
   level: DEFAULT_LEVEL,
+  difficulty: 'full',
   view: 'staff',
   scrollSpeed: 1.0,
   dynamicsBonus: true,
@@ -78,6 +82,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setLatencyOffset: ms => set({ midiLatencyOffsetMs: ms }),
       setMidiMap: map => set({ midiMap: map }),
       setLevel: level => set({ level }),
+      setDifficulty: difficulty => set({ difficulty }),
       setView: view => set({ view }),
       setScrollSpeed: v => set({ scrollSpeed: v }),
       setDynamicsBonus: on => set({ dynamicsBonus: on }),

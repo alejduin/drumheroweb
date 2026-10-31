@@ -199,6 +199,20 @@ describe('editor de partitura', () => {
   })
 })
 
+describe('guardar regenera las dificultades', () => {
+  it('Básico e Intermedio salen de la versión editada', () => {
+    const chart = chartWith([note(0, 'kick'), note(0.5, 'snare')])
+    const state = run(createEditorState(chart), { type: 'add', t: 1, piece: 'kick' })
+    const saved = chartWithEdits(chart, state)
+    expect(saved.difficulties.basic.notes.map(n => `${n.t}:${n.piece}`)).toEqual([
+      '0:kick',
+      '0.5:snare',
+      '1:kick',
+    ])
+    expect(saved.difficulties.intermediate.notes).toHaveLength(3)
+  })
+})
+
 describe('grabar con el kit (replaceRange)', () => {
   const NOTES = [note(0, 'kick'), note(2, 'kick'), note(2.5, 'snare', 0.3), note(4, 'crash')]
   const hit = (t: number, piece: ChartNote['piece'], velocity = 100) => ({ t, piece, velocity })

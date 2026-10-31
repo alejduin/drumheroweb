@@ -18,8 +18,6 @@ import { TransportBar } from '@/ui/game/TransportBar'
 import { VideoPanel } from '@/ui/game/VideoPanel'
 import { Button } from '@/ui/primitives'
 
-// Básico e Intermedio llegan con el reductor de dificultad (Fase D)
-const DIFFICULTY: Difficulty = 'full'
 // El control de tempo llega con el loop de práctica (Fase D)
 const TEMPO = 1
 
@@ -37,7 +35,7 @@ interface GameScreenProps {
 function readOptions(): SessionOptions {
   const s = useSettingsStore.getState()
   return {
-    difficulty: DIFFICULTY,
+    difficulty: s.difficulty,
     level: s.level,
     latencyMs: s.midiLatencyOffsetMs,
     dynamicsBonus: s.dynamicsBonus,
@@ -107,6 +105,8 @@ function GameLayout({
 }: GameLayoutProps) {
   const { chart } = session
   const phase = useGameStore(selectPhase)
+  const [difficulty, setDifficultyState] = useState<Difficulty>(session.difficulty)
+  const setSavedDifficulty = useSettingsStore(s => s.setDifficulty)
 
   // Continuar: la partida empieza en la sección guardada, en pausa
   useEffect(() => {
@@ -124,7 +124,7 @@ function GameLayout({
           chart,
           sections: session.sections,
           positionS: ended ? null : session.clock.now(),
-          difficulty: DIFFICULTY,
+          difficulty: session.difficulty,
           tempo: TEMPO,
           now: Date.now(),
         }),
@@ -165,6 +165,11 @@ function GameLayout({
     setMixLevel(channel, value)
     session.setMixLevel(channel, value)
   }
+  const changeDifficulty = (value: Difficulty) => {
+    session.setDifficulty(value)
+    setDifficultyState(value)
+    setSavedDifficulty(value)
+  }
   const changeDynamics = (on: boolean) => {
     setDynamicsBonus(on)
     session.setDynamicsBonus(on)
@@ -197,7 +202,7 @@ function GameLayout({
     <main className="flex h-full flex-col overflow-hidden bg-bg font-sans text-fg">
       <GameHeader
         chart={chart}
-        difficulty={DIFFICULTY}
+        difficulty={difficulty}
         clock={session.clock}
         playing={playing}
         onToggle={toggle}
@@ -245,7 +250,13 @@ function GameLayout({
           />
         </div>
         <SessionSettingsPanel
-          difficulty={DIFFICULTY}
+          difficulty={difficulty}
+          difficultyCounts={{
+            basic: chart.difficulties.basic.notes.length,
+            intermediate: chart.difficulties.intermediate.notes.length,
+            full: chart.difficulties.full.notes.length,
+          }}
+          onDifficultyChange={changeDifficulty}
           mix={mix}
           audioMode={session.audioMode}
           onMixChange={changeMix}
