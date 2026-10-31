@@ -185,4 +185,28 @@ describe('biblioteca en la nube', () => {
     await expect(store.getState().setYoutubeOffset('remote-1', -80)).rejects.toThrow()
     expect(store.getState().songs[0].youtubeOffsetMs).toBe(-80)
   })
+
+  it('guardar el chart editado lo sube y la canción deja de estar por revisar', async () => {
+    const { store, remote, dbName } = setup()
+    remote.songs = [remoteSong({ status: 'needs_review' })]
+    await store.getState().sync()
+    const { chart } = await store.getState().bundle('remote-1')
+    const edited = {
+      ...chart,
+      difficulties: {
+        ...chart.difficulties,
+        full: { notes: chart.difficulties.full.notes.map(n => ({ ...n, confidence: 1 })) },
+      },
+    }
+    await store.getState().saveChart('remote-1', edited)
+
+    expect(store.getState().songs[0]).toMatchObject({ status: 'ready' })
+    expect(store.getState().songs[0].summary?.lowConfidenceCount).toBe(0)
+    expect(remote.savedCharts).toEqual([
+      expect.objectContaining({ songId: 'remote-1', status: 'ready' }),
+    ])
+    const db = await openLibraryDb(dbName)
+    expect((await db.getAsset('remote-1', 'chart'))?.difficulties.full.notes[0].confidence).toBe(1)
+    db.close()
+  })
 })

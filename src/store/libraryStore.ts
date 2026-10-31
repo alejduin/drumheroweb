@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { ChartV2 } from '@/types'
 import type { SongBundle } from '@/game/GameSession'
 import { createCloudClient, createJobWaker } from '@/api/cloudClient'
 import type { RemoteLibrary, RemoteSong } from '@/api/cloudClient'
@@ -67,6 +68,11 @@ export interface LibraryState {
    * Lanza si no se pudo subir a la nube (la copia local ya quedó guardada).
    */
   setYoutubeOffset(id: string, offsetMs: number): Promise<void>
+  /**
+   * Guarda el chart corregido en el editor y recalcula estado y resumen.
+   * Lanza si no se pudo subir a la nube (la copia local ya quedó guardada).
+   */
+  saveChart(id: string, chart: ChartV2): Promise<void>
 }
 
 export function createLibraryStore(deps: LibraryDeps) {
@@ -319,6 +325,15 @@ export function createLibraryStore(deps: LibraryDeps) {
         const chart = await library.getAsset(id, 'chart')
         if (chart) await library.putAssets(id, { chart: { ...chart, youtubeOffsetMs: offsetMs } })
         if (remote && song.cloud) await remote.setYoutubeOffset(id, offsetMs)
+      },
+
+      async saveChart(id, chart) {
+        const status = statusForChart(chart)
+        const summary = summaryFromChart(chart)
+        await (await db()).putAssets(id, { chart })
+        const song = await updateSong(id, { status, summary })
+        if (!song) throw new Error('La canción ya no está en la biblioteca.')
+        if (remote && song.cloud) await remote.saveChart(id, chart, status, summary)
       },
     }
   })

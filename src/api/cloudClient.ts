@@ -50,6 +50,8 @@ export interface RemoteLibrary {
   markPlayed(songId: string, at: number): Promise<void>
   /** Offset del video (asistente de sincronía). */
   setYoutubeOffset(songId: string, offsetMs: number): Promise<void>
+  /** Chart corregido en el editor, con el estado y el resumen que resultan. */
+  saveChart(songId: string, chart: ChartV2, status: SongStatus, summary: JobSummary): Promise<void>
 }
 
 interface CloudDeps {
@@ -322,6 +324,11 @@ export function createCloudClient(
 
     async setYoutubeOffset(songId, offsetMs) {
       unwrap(await sb.from('songs').update({ youtube_offset_ms: offsetMs }).eq('id', songId))
+    },
+
+    async saveChart(songId, chart, status, summary) {
+      unwrap(await sb.from('charts').update({ data: chart, edited: true }).eq('song_id', songId))
+      unwrap(await sb.from('songs').update({ status, summary }).eq('id', songId))
     },
   }
 }

@@ -1,4 +1,6 @@
+import type { ChartV2, JobSummary } from '@/types'
 import type { RemoteLibrary, RemoteSong } from '@/api/cloudClient'
+import type { SongStatus } from '@/library/status'
 import type { DownloadedResult } from '@/library/jobTracker'
 import { analyzedChart } from './FakeWorkerClient'
 
@@ -71,5 +73,14 @@ export class FakeRemoteLibrary implements RemoteLibrary {
     this.offsets.push([songId, offsetMs])
     const song = this.songs.find(s => s.id === songId)
     if (song) song.youtubeOffsetMs = offsetMs
+  }
+
+  savedCharts: Array<{ songId: string; chart: ChartV2; status: SongStatus }> = []
+
+  async saveChart(songId: string, chart: ChartV2, status: SongStatus, summary: JobSummary) {
+    await this.check()
+    this.savedCharts.push({ songId, chart, status })
+    const song = this.songs.find(s => s.id === songId)
+    if (song) Object.assign(song, { status, summary })
   }
 }
