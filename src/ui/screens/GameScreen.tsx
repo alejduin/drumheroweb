@@ -216,7 +216,12 @@ function GameLayout({
         <div className="flex min-w-0 shrink grow-0 basis-[1028px] flex-col gap-4">
           <div className="flex h-[360px] shrink-0 gap-6">
             {videoVisible && (
-              <VideoPanel youtubeUrl={chart.youtubeUrl} onHide={() => setVideoVisible(false)} />
+              <VideoPanel
+                youtubeUrl={chart.youtubeUrl}
+                offsetMs={chart.youtubeOffsetMs}
+                clock={session.clock}
+                onHide={() => setVideoVisible(false)}
+              />
             )}
             <SectionsPanel
               sections={session.sections}
