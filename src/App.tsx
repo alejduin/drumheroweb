@@ -5,6 +5,7 @@ import type { SongRef } from '@/game/lastSession'
 import { effectiveSections } from '@/game/sections'
 import { useMidi } from '@/hooks/useMidi'
 import { syncMidiMapWithSettings } from '@/midi/syncMidiMap'
+import { syncLatencyWithDevice } from '@/midi/syncLatency'
 import { builtinBundle } from '@/songs/songBundle'
 import { loadChart } from '@/songs/songLoader'
 import type { ScoreResults } from '@/scoring/ScoreManager'
@@ -68,6 +69,8 @@ export default function App() {
 
   // El mapa guardado (calibración) es el que usa el midiManager
   useEffect(() => syncMidiMapWithSettings(), [])
+  // Latencia del kit según el dispositivo MIDI conectado (D8)
+  useEffect(() => syncLatencyWithDevice(), [])
 
   // Color de acento elegido en Ajustes
   useEffect(() => syncAccentWithSettings(), [])

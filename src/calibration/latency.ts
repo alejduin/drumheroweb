@@ -84,3 +84,14 @@ export function nearestClick(grid: ChartGrid, songT: number): number | null {
   const distanceMs = Math.abs(songT - grid.beats[i]) * 1000
   return distanceMs <= MAX_HIT_DISTANCE_MS ? index : null
 }
+
+/** Línea bajo "Latencia del kit": de qué dispositivo es el valor (perfil D8). */
+export function latencyProfileText(
+  device: string | null,
+  profile: { updatedAt: number } | undefined,
+  formatDate: (ms: number) => string,
+): string {
+  if (!device) return 'Conecta el kit: cada dispositivo guarda su propia latencia'
+  if (!profile) return `${device}: sin calibrar todavía (se guarda al calibrar o ajustar)`
+  return `Perfil de ${device} · guardado ${formatDate(profile.updatedAt)}`
+}

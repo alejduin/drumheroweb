@@ -37,6 +37,13 @@ export interface UserSettings {
   mix: MixLevels
   /** Color de acento de la UI (variantes de las maquetas). */
   accent: AccentName
+  /** Latencia calibrada por dispositivo MIDI (D8), por nombre del dispositivo. */
+  latencyProfiles: Record<string, LatencyProfile>
+}
+
+export interface LatencyProfile {
+  latencyMs: number
+  updatedAt: number
 }
 
 interface SettingsStore extends UserSettings {
@@ -57,6 +64,8 @@ interface SettingsStore extends UserSettings {
   setMixLevel(channel: MixChannel, level: number): void
   setMix(mix: MixLevels): void
   setAccent(accent: AccentName): void
+  /** Guarda la latencia de un dispositivo (la sincronía con el MIDI lo llama sola). */
+  setLatencyProfile(device: string, latencyMs: number, at?: number): void
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -76,6 +85,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   dynamicsBonus: true,
   mix: { ...DEFAULT_MIX },
   accent: DEFAULT_ACCENT,
+  latencyProfiles: {},
 }
 
 /** Ajustes guardados por una versión anterior → versión actual. */
@@ -124,6 +134,10 @@ export const useSettingsStore = create<SettingsStore>()(
         set(state => ({ mix: { ...state.mix, [channel]: clampLevel(level) } })),
       setMix: mix => set({ mix: { ...mix } }),
       setAccent: accent => set({ accent }),
+      setLatencyProfile: (device, latencyMs, at = Date.now()) =>
+        set(state => ({
+          latencyProfiles: { ...state.latencyProfiles, [device]: { latencyMs, updatedAt: at } },
+        })),
     }),
     {
       name: 'drumhero-settings',

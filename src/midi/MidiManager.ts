@@ -31,7 +31,7 @@ type DevicesCallback = (devices: MidiDevice[]) => void
  *   const unsub = midiManager.onHit(hit => console.log(hit))
  *   unsub() // para dejar de escuchar
  */
-class MidiManager {
+export class MidiManager {
   private access: MIDIAccess | null = null
   private selectedInput: MIDIInput | null = null
   private midiMap: Record<number, Piece> = { ...DEFAULT_MIDI_MAP }
@@ -106,6 +106,8 @@ class MidiManager {
 
     this.selectedInput = input
     this.selectedInput.onmidimessage = (event: MIDIMessageEvent) => this.handleMessage(event)
+    // Quien muestra el dispositivo o aplica su perfil de latencia se entera
+    this.notifyDevices()
   }
 
   // ─── Mapa MIDI ──────────────────────────────────────────────────────────────

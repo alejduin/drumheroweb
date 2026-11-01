@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { LEVEL_WINDOWS } from '@/constants/scoring'
 import { ACCENTS } from '@/constants/theme'
 import type { AccentName } from '@/constants/theme'
@@ -6,7 +7,9 @@ import type { Level, ScoreView } from '@/types'
 import { formatSignedMs } from '@/game/format'
 import { LEVEL_LABELS } from '@/game/songMeta'
 import { useSettingsStore } from '@/store/settingsStore'
-import { WEEKLY_GOAL_OPTIONS } from '@/progress/history'
+import { WEEKLY_GOAL_OPTIONS, dayLabel } from '@/progress/history'
+import { latencyProfileText } from '@/calibration/latency'
+import { useMidiDeviceName } from '@/hooks/useMidiDeviceName'
 import { Button, Panel, SegmentedControl, Slider } from '@/ui/primitives'
 import { cn } from '@/ui/primitives/cn'
 
@@ -43,6 +46,7 @@ export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
     accent,
     mix,
     weeklyGoalMin,
+    latencyProfiles,
     setWeeklyGoal,
     setLatencyOffset,
     setLevel,
@@ -52,6 +56,8 @@ export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
     setMixLevel,
   } = useSettingsStore()
   const windows = LEVEL_WINDOWS[level]
+  const midiDevice = useMidiDeviceName()
+  const [openedAt] = useState(() => Date.now())
   const metronomePct = Math.round(mix.metronome * 100)
 
   return (
@@ -162,6 +168,13 @@ export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
               valueText={formatSignedMs(midiLatencyOffsetMs)}
               onChange={setLatencyOffset}
             />
+            <span className="text-[11px] text-muted" aria-live="polite">
+              {latencyProfileText(
+                midiDevice,
+                midiDevice ? latencyProfiles[midiDevice] : undefined,
+                ms => dayLabel(ms, openedAt),
+              )}
+            </span>
           </SettingRow>
           <Button size="sm" className="self-start" onClick={onCalibrate}>
             Calibrar latencia y mapeo MIDI
