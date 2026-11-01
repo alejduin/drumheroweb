@@ -24,7 +24,7 @@ y el usuario la toca mientras la partitura se desplaza sincronizada con la músi
 | Video | YouTube IFrame API (siempre silenciado) |
 | Estado global | Zustand |
 | Estilos | Tailwind CSS v4, tokens en `@theme` (`src/styles/theme.css`) |
-| Persistencia | localStorage (settings) + IndexedDB (audio, stems, charts) + Supabase |
+| Persistencia | localStorage (settings) + IndexedDB (audio, stems, charts) + Supabase; service worker generado en el build (`pwa/`) para el shell offline |
 | Worker IA | Python 3.10 + FastAPI + Demucs + ADTOF + beat_this, en Docker (`worker/`) |
 | Testing | Vitest + RTL (frontend), pytest (worker) |
 
@@ -116,10 +116,10 @@ compás y beat se derivan de `grid.beats` / `grid.downbeats`. `confidence < 0.6`
 
 ## Estado Actual
 
-**Fase:** C terminada. **Próximo:** cerrar A6 (`worker/poc/REPORT.md`; faltan referencias y una 5.ª canción), luego Fase D.
+**Fase:** D implementada (D1–D8); D1–D7 publicadas, D8 sin publicar. **Próximo:** verificar D8 con el kit (checklist de REQUIREMENTS_V2 §10) y publicarla; cerrar A6 (`worker/poc/REPORT.md`; faltan referencias y una 5.ª canción).
 
 - [x] Fase 0 — preparación (design/, strict typecheck, husky, CLAUDE.md V2)
 - [ ] Fase A — prueba de concepto de IA: A1–A5 hechas; falta A6 (`worker/poc/REPORT.md`)
 - [x] Fase B — juego con chart propio: B1–B15 hechas (B12 en Supabase `drumhero`, publicado en https://drumhero-beta.vercel.app con `npm run deploy`)
 - [x] Fase C — YouTube y editor: C1–C5 hechas (video sincronizado, asistente de offset, editor con guardado en Supabase, escuchar la transcripción, grabar con el kit)
-- [ ] Fase D — aprendizaje
+- [ ] Fase D — aprendizaje: D1–D8 hechas (dificultades, tempo 50–100 % con WSOLA propio, loop A–B con cuenta y rampa, modo espera, capas, compases flojos, historial/racha/meta/insignias en Supabase, latencia por dispositivo, PWA y panel de rendimiento); falta la verificación manual con el kit
