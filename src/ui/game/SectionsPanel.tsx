@@ -4,10 +4,11 @@ import type { ChartGrid, ChartSection } from '@/types'
 import type { SongClock } from '@/audio/AudioClock'
 import { measureAt } from '@/chart/grid'
 import { formatPercent } from '@/game/format'
-import { practiceSuggestion, sectionIndexAt } from '@/game/sections'
+import { PRACTICE_TEMPO, sectionIndexAt } from '@/game/sections'
+import { practiceLabel } from '@/game/practice'
 import type { PracticeSuggestion } from '@/game/sections'
 import { useAnimationFrame } from '@/hooks/useAnimationFrame'
-import { selectSections, useGameStore } from '@/store/gameStore'
+import { selectSections, selectWeakSpot, useGameStore } from '@/store/gameStore'
 import { Button, Panel, cn } from '@/ui/primitives'
 
 const TONE_TEXT = { perfect: 'text-perfect-fg', close: 'text-close-fg', miss: 'text-miss' } as const
@@ -17,7 +18,7 @@ interface SectionsPanelProps {
   grid: ChartGrid
   clock: SongClock
   onSeekSection: (section: ChartSection) => void
-  /** Loop sobre la sección más floja al tempo sugerido. */
+  /** Loop sobre los 4 compases más flojos al tempo sugerido (D6). */
   onPractice: (suggestion: PracticeSuggestion) => void
   /** Si el video está oculto, el panel ofrece volver a mostrarlo. */
   onShowVideo?: () => void
@@ -47,7 +48,10 @@ export function SectionsPanel({
     rowRefs.current[current]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [current])
 
-  const suggestion = practiceSuggestion(stats)
+  const weak = useGameStore(selectWeakSpot)
+  const suggestion: PracticeSuggestion | null = weak
+    ? { startMeasure: weak.startMeasure, endMeasure: weak.endMeasure, tempo: PRACTICE_TEMPO }
+    : null
   return (
     <Panel
       title="Secciones"
@@ -105,14 +109,14 @@ export function SectionsPanel({
         disabled={!suggestion}
         title={
           suggestion
-            ? 'Loop sobre la sección más floja; desde ahí puedes activar la rampa'
-            : 'Toca un poco: se sugiere la sección con menos precisión'
+            ? 'Loop sobre tus 4 compases más flojos; desde ahí puedes activar la rampa'
+            : 'Toca un poco: se sugieren los compases con menos precisión'
         }
         onClick={() => suggestion && onPractice(suggestion)}
       >
-        {suggestion
-          ? `Practicar compases ${suggestion.startMeasure}–${suggestion.endMeasure} al ${Math.round(suggestion.tempo * 100)}%`
-          : 'Practicar una sección'}
+        {weak
+          ? practiceLabel(weak, PRACTICE_TEMPO, { withGroup: false })
+          : 'Practicar mis compases flojos'}
       </Button>
     </Panel>
   )

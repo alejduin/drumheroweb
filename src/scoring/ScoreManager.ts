@@ -174,7 +174,19 @@ export class ScoreManager {
       byGroup[group] = { ...tally, precision: precisionOf(tally) }
     }
 
-    const byMeasure = [...this.byMeasure.entries()]
+    return {
+      ...this.snapshot(),
+      bestComboRun: this.best ? { ...this.best } : null,
+      meanDeltaMs: mean(this.deltas),
+      byGroup,
+      byMeasure: this.measureStats(),
+      bySection: this.sectionStats(),
+    }
+  }
+
+  /** Precisión por compás tocado, en orden (mapa de calor y compases débiles en vivo). */
+  measureStats(): MeasureStats[] {
+    return [...this.byMeasure.entries()]
       .sort(([a], [b]) => a - b)
       .map(([measure, tally]) => ({
         measure,
@@ -184,15 +196,6 @@ export class ScoreManager {
           [...(this.byMeasureGroup.get(measure) ?? [])].map(([g, t]) => [g, { ...t }]),
         ),
       }))
-
-    return {
-      ...this.snapshot(),
-      bestComboRun: this.best ? { ...this.best } : null,
-      meanDeltaMs: mean(this.deltas),
-      byGroup,
-      byMeasure,
-      bySection: this.sectionStats(),
-    }
   }
 
   /** Precisión por sección (panel Secciones en vivo y Resultados). */

@@ -2,14 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { ChartGrid } from '@/types'
 import {
   AUTO_SECTION_MEASURES,
-  PRACTICE_TEMPO,
   effectiveSections,
-  practiceSuggestion,
   rulerLabel,
   sectionIndexAt,
   sectionSpans,
 } from '@/game/sections'
-import type { SectionStats } from '@/scoring/ScoreManager'
 
 // 20 compases de 2 s, empezando en 0
 const grid: ChartGrid = {
@@ -21,14 +18,6 @@ const SECTIONS = [
   { name: 'Verso', startMeasure: 5, endMeasure: 12 },
   { name: 'Coro', startMeasure: 13, endMeasure: 20 },
 ]
-
-const stat = (name: string, precision: number | null, start = 1, end = 4): SectionStats => ({
-  name,
-  startMeasure: start,
-  endMeasure: end,
-  tally: { perfect: 0, close: 0, miss: 0 },
-  precision,
-})
 
 describe('secciones', () => {
   it('usa las del chart si las trae', () => {
@@ -67,17 +56,5 @@ describe('secciones', () => {
       '9',
       '17',
     ])
-  })
-
-  it('sugiere practicar la sección tocada más floja por debajo del 85 %', () => {
-    expect(
-      practiceSuggestion([
-        stat('Intro', 0.98),
-        stat('Verso', 0.76, 5, 12),
-        stat('Puente', 0.8, 13, 16),
-        stat('Coro', null, 17, 20),
-      ]),
-    ).toEqual({ startMeasure: 5, endMeasure: 12, tempo: PRACTICE_TEMPO })
-    expect(practiceSuggestion([stat('Intro', 0.9), stat('Verso', null)])).toBeNull()
   })
 })

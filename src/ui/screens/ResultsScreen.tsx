@@ -3,6 +3,7 @@ import { LEVEL_POINTS, starsFor } from '@/constants/scoring'
 import type { ChartV2 } from '@/types'
 import { formatPercent, formatScore, formatSignedMs } from '@/game/format'
 import { PRACTICE_TEMPO } from '@/game/sections'
+import { practiceLabel } from '@/game/practice'
 import type { PracticeRequest } from '@/ui/screens/GameScreen'
 import { LEVEL_LABELS } from '@/game/songMeta'
 import {
@@ -14,7 +15,6 @@ import {
   timingTendency,
 } from '@/scoring/analytics'
 import type { SectionPrecision } from '@/scoring/analytics'
-import { PIECE_GROUP_LABELS } from '@/scoring/pieceGroups'
 import { sectionForMeasure } from '@/scoring/ScoreManager'
 import type { ScoreResults } from '@/scoring/ScoreManager'
 import { useProgressStore } from '@/store/progressStore'
@@ -151,11 +151,7 @@ export function ResultsScreen({
                   })
                 }
               >
-                {weak.startMeasure === weak.endMeasure
-                  ? `Practicar el compás ${weak.startMeasure}`
-                  : `Practicar compases ${weak.startMeasure}–${weak.endMeasure}`}
-                {weak.group && ` (${PIECE_GROUP_LABELS[weak.group].toLowerCase()})`} al{' '}
-                {Math.round(PRACTICE_TEMPO * 100)}%
+                {practiceLabel(weak, PRACTICE_TEMPO)}
               </Button>
             )}
             <Button variant={weak ? 'secondary' : 'primary'} size="lg" onClick={onRetry}>

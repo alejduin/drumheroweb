@@ -1,13 +1,11 @@
-import { PRECISION_GOOD } from '@/constants/scoring'
 import type { ChartGrid, ChartSection, ChartV2 } from '@/types'
-import type { SectionStats } from '@/scoring/ScoreManager'
 
 // ─── Secciones de la partida ──────────────────────────────────────────────────
 
 /** Compases por sección cuando el chart no trae secciones (charts de IA, hasta el editor). */
 export const AUTO_SECTION_MEASURES = 8
 
-/** Tempo sugerido para practicar una sección floja (la práctica llega en la Fase D). */
+/** Tempo sugerido para practicar los compases flojos (D6). */
 export const PRACTICE_TEMPO = 0.75
 
 /** Secciones del chart o, si no tiene, bloques automáticos de AUTO_SECTION_MEASURES compases. */
@@ -65,16 +63,4 @@ export interface PracticeSuggestion {
   startMeasure: number
   endMeasure: number
   tempo: number
-}
-
-/** Sección tocada con menor precisión, si está por debajo de PRECISION_GOOD. */
-export function practiceSuggestion(stats: readonly SectionStats[]): PracticeSuggestion | null {
-  let weakest: SectionStats | null = null
-  for (const s of stats) {
-    if (s.precision === null || s.precision >= PRECISION_GOOD) continue
-    if (!weakest || s.precision < weakest.precision!) weakest = s
-  }
-  return weakest
-    ? { startMeasure: weakest.startMeasure, endMeasure: weakest.endMeasure, tempo: PRACTICE_TEMPO }
-    : null
 }

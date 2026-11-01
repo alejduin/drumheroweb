@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import type { GameEngine } from '@/engine/GameEngine'
 import { ScoreManager } from '@/scoring/ScoreManager'
 import type { ScoreResults, ScoreSnapshot, SectionStats } from '@/scoring/ScoreManager'
+import { findWeakestMeasures } from '@/scoring/analytics'
+import type { WeakSpot } from '@/scoring/analytics'
 
 // ─── Estado de la partida para la UI ──────────────────────────────────────────
 // Se actualiza con cada juicio, nunca por frame (CLAUDE.md, regla 6). El canvas
@@ -25,6 +27,8 @@ interface GameStore {
   hud: ScoreSnapshot
   /** Precisión por sección en vivo (panel Secciones). */
   sections: SectionStats[]
+  /** Los 4 compases seguidos más flojos hasta ahora (D6); null si no hay ninguno flojo. */
+  weakSpot: WeakSpot | null
   /** Estadísticas completas al terminar la partida. */
   results: ScoreResults | null
   setPhase(phase: PlayPhase): void
@@ -35,9 +39,11 @@ export const useGameStore = create<GameStore>(set => ({
   phase: 'idle',
   hud: EMPTY_SNAPSHOT,
   sections: [],
+  weakSpot: null,
   results: null,
   setPhase: phase => set({ phase }),
-  reset: () => set({ phase: 'idle', hud: EMPTY_SNAPSHOT, sections: [], results: null }),
+  reset: () =>
+    set({ phase: 'idle', hud: EMPTY_SNAPSHOT, sections: [], weakSpot: null, results: null }),
 }))
 
 /** Lo que el store necesita del engine (fake en tests). */
@@ -52,7 +58,11 @@ export function bindScoring(engine: JudgementSource, manager: ScoreManager): () 
   manager.reset()
   store.reset()
 
-  const live = () => ({ hud: manager.snapshot(), sections: manager.sectionStats() })
+  const live = () => ({
+    hud: manager.snapshot(),
+    sections: manager.sectionStats(),
+    weakSpot: findWeakestMeasures(manager.measureStats()),
+  })
   const publish = () => useGameStore.setState(live())
   publish()
   const unsubs = [
@@ -74,7 +84,7 @@ export function bindScoring(engine: JudgementSource, manager: ScoreManager): () 
 
 // ─── Selectores (un componente se re-renderiza solo si cambia su valor) ───────
 
-type State = Pick<GameStore, 'phase' | 'hud' | 'sections' | 'results'>
+type State = Pick<GameStore, 'phase' | 'hud' | 'sections' | 'weakSpot' | 'results'>
 
 export const selectPhase = (s: State) => s.phase
 export const selectScore = (s: State) => s.hud.score
@@ -84,4 +94,5 @@ export const selectPrecision = (s: State) => s.hud.precision
 export const selectTimingTrend = (s: State) => s.hud.timingTrendMs
 export const selectLastJudgement = (s: State) => s.hud.last
 export const selectSections = (s: State) => s.sections
+export const selectWeakSpot = (s: State) => s.weakSpot
 export const selectResults = (s: State) => s.results

@@ -8,6 +8,7 @@ import {
   selectResults,
   selectScore,
   selectSections,
+  selectWeakSpot,
   useGameStore,
 } from '@/store/gameStore'
 import type { JudgementSource } from '@/store/gameStore'
@@ -80,6 +81,33 @@ describe('gameStore', () => {
     expect(selectSections(useGameStore.getState())[0].precision).toBeNull()
     fake.judge(perfect(0))
     expect(selectSections(useGameStore.getState())[0].precision).toBe(1)
+  })
+
+  it('publica en vivo los compases más flojos (D6)', () => {
+    const fake = fakeEngine()
+    // 8 compases de 1 s con una nota por beat (4 por compás)
+    const many = Array.from({ length: 32 }, (_, i) => ({ ...notes[0], t: i * 0.25 }))
+    const g = {
+      beats: many.map(n => n.t),
+      downbeats: Array.from({ length: 8 }, (_, i) => i),
+    }
+    bindScoring(fake.engine, new ScoreManager({ notes: many, grid: g, sections: [] }))
+    expect(selectWeakSpot(useGameStore.getState())).toBeNull()
+    const miss = (i: number): TimedJudgement => ({
+      judgement: 'miss',
+      noteIndex: i,
+      piece: 'snare',
+      t: many[i].t,
+    })
+    many.forEach((n, i) => fake.judge(n.t >= 4 ? miss(i) : { ...perfect(i), t: n.t }))
+    expect(selectWeakSpot(useGameStore.getState())).toMatchObject({
+      startMeasure: 5,
+      endMeasure: 8,
+      precision: 0,
+      group: 'snare',
+    })
+    useGameStore.getState().reset()
+    expect(selectWeakSpot(useGameStore.getState())).toBeNull()
   })
 
   it('un seek reconstruye el HUD con los juicios vigentes', () => {

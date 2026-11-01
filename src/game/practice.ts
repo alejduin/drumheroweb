@@ -4,6 +4,8 @@ import type { CountInClick } from '@/engine/Metronome'
 import { MAX_TEMPO, TEMPO_STEP, normalizeTempo } from '@/audio/timeStretch'
 import { measureAt, measureRange } from '@/chart/grid'
 import { PIECE_LABELS } from '@/calibration/midiMapping'
+import { PIECE_GROUP_LABELS } from '@/scoring/pieceGroups'
+import type { WeakSpot } from '@/scoring/analytics'
 
 // ─── Práctica: loop A–B, cuenta y rampa de tempo (PLAN_V2 D3) ─────────────────
 
@@ -139,4 +141,21 @@ export function countInLengthS(clicks: readonly CountInClick[], startS: number):
 export function waitText(waitingFor: readonly Piece[] | null): string {
   if (!waitingFor) return 'Se detiene en cada nota hasta que la toques'
   return `Esperando: ${waitingFor.map(p => PIECE_LABELS[p]).join(' + ')}`
+}
+
+/**
+ * Texto del CTA de práctica (D6), en Resultados y en el panel Secciones:
+ * "Practicar compases 27–30 (toms) al 70%". `withGroup: false` omite la pieza.
+ */
+export function practiceLabel(
+  spot: Pick<WeakSpot, 'startMeasure' | 'endMeasure' | 'group'>,
+  tempo: number,
+  { withGroup = true }: { withGroup?: boolean } = {},
+): string {
+  const range =
+    spot.startMeasure === spot.endMeasure
+      ? `Practicar el compás ${spot.startMeasure}`
+      : `Practicar compases ${spot.startMeasure}–${spot.endMeasure}`
+  const group = withGroup && spot.group ? ` (${PIECE_GROUP_LABELS[spot.group].toLowerCase()})` : ''
+  return `${range}${group} al ${Math.round(tempo * 100)}%`
 }

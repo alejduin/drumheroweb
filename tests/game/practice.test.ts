@@ -7,6 +7,7 @@ import {
   countInLengthS,
   lapPrecision,
   lapText,
+  practiceLabel,
   waitText,
   loopAt,
   loopFromSelection,
@@ -130,5 +131,21 @@ describe('waitText', () => {
   it('explica el modo o dice qué falta tocar', () => {
     expect(waitText(null)).toMatch(/hasta que la toques/)
     expect(waitText(['snare', 'kick'])).toBe('Esperando: Caja + Bombo')
+  })
+})
+
+describe('practiceLabel (D6)', () => {
+  it('rango, pieza más floja y tempo', () => {
+    expect(practiceLabel({ startMeasure: 27, endMeasure: 30, group: 'toms' }, 0.7)).toBe(
+      'Practicar compases 27–30 (toms) al 70%',
+    )
+    expect(practiceLabel({ startMeasure: 3, endMeasure: 3, group: null }, 0.75)).toBe(
+      'Practicar el compás 3 al 75%',
+    )
+    expect(
+      practiceLabel({ startMeasure: 12, endMeasure: 15, group: 'kick' }, 0.75, {
+        withGroup: false,
+      }),
+    ).toBe('Practicar compases 12–15 al 75%')
   })
 })
