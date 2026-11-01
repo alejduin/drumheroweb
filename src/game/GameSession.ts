@@ -160,6 +160,10 @@ export class GameSession {
   private lastLap: LapResult | null = null
   private practiceSnapshot: PracticeState
   private readonly practiceListeners = new Set<() => void>()
+  // Tiempo real tocando, para el historial (D7); no es el reloj del juego
+  private readonly perfNow: () => number
+  private playedMs = 0
+  private playingSince: number | null = null
 
   private constructor(
     ctx: SessionContext,
@@ -169,6 +173,7 @@ export class GameSession {
     deps: SessionDeps,
   ) {
     this.ctx = ctx
+    this.perfNow = deps.perfNow ?? (() => performance.now())
     this.countIn = options.countIn ?? false
     this.tempoRamp = options.tempoRamp ?? false
     // El worker solo emite `full`: Básico e Intermedio se generan aquí si faltan
@@ -201,6 +206,7 @@ export class GameSession {
     this.player.onEnded(() => this.engine.finish())
     // Cada vuelta del loop: precisión y rampa de tempo
     this.engine.onLoop(lap => this.handleLap(lap))
+    this.engine.onEnd(() => this.stopPlayTimer())
     // Modo espera: el audio se detiene en la nota y sigue al tocarla
     this.engine.setWaitMode(options.waitMode ?? false)
     this.engine.onWait(wait => this.handleWait(wait))
@@ -505,6 +511,7 @@ export class GameSession {
     this.player.play(countInLengthS(clicks, at))
     if (clicks.length) this.metronome.countIn(clicks)
     this.engine.start()
+    this.playingSince ??= this.perfNow()
     useGameStore.getState().setPhase('playing')
   }
 
@@ -513,6 +520,7 @@ export class GameSession {
     // engine.stop suelta la espera; al reanudar se vuelve a detener en la nota
     this.engine.stop()
     if (this.player.isPlaying) this.player.pause()
+    this.stopPlayTimer()
     useGameStore.getState().setPhase('paused')
   }
 
@@ -550,8 +558,33 @@ export class GameSession {
     this.engine.setDynamicsBonus(on)
   }
 
+  /**
+   * Segundos reales tocados (sin pausas, con las esperas del modo espera) desde la
+   * última llamada: cada partida del historial se lleva solo su parte. Con menos de
+   * `minS` devuelve 0 y no consume nada.
+   */
+  takePlayedSeconds(minS = 0): number {
+    if (this.playingSince !== null) {
+      const now = this.perfNow()
+      this.playedMs += now - this.playingSince
+      this.playingSince = now
+    }
+    const seconds = this.playedMs / 1000
+    // Un rato muy corto no se lleva: se suma al siguiente
+    if (seconds < minS) return 0
+    this.playedMs = 0
+    return seconds
+  }
+
+  private stopPlayTimer(): void {
+    if (this.playingSince === null) return
+    this.playedMs += this.perfNow() - this.playingSince
+    this.playingSince = null
+  }
+
   dispose(): void {
     if (this.disposed) return
+    this.stopPlayTimer()
     this.disposed = true
     this.tempoJob?.abort()
     this.practiceListeners.clear()

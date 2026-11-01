@@ -7,6 +7,7 @@ import { DEFAULT_LEVEL } from '@/constants/scoring'
 import { DEFAULT_ACCENT, applyAccent } from '@/constants/theme'
 import type { AccentName } from '@/constants/theme'
 import type { PracticeLayer } from '@/chart/layers'
+import { DEFAULT_WEEKLY_GOAL_MIN } from '@/progress/history'
 import type { Difficulty, Level, Piece, ScoreView } from '@/types'
 import { DEFAULT_MIDI_MAP, migrateMidiMap } from '@/midi/midiMap'
 
@@ -28,6 +29,8 @@ export interface UserSettings {
   waitMode: boolean
   /** Última capa de práctica elegida (D5). */
   layer: PracticeLayer
+  /** Meta semanal de práctica en minutos (D7). */
+  weeklyGoalMin: number
   view: ScoreView
   scrollSpeed: number // multiplicador sobre la velocidad base
   dynamicsBonus: boolean
@@ -47,6 +50,7 @@ interface SettingsStore extends UserSettings {
   setTempoRamp(on: boolean): void
   setWaitMode(on: boolean): void
   setLayer(layer: PracticeLayer): void
+  setWeeklyGoal(minutes: number): void
   setView(view: ScoreView): void
   setScrollSpeed(v: number): void
   setDynamicsBonus(on: boolean): void
@@ -66,6 +70,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   tempoRamp: false,
   waitMode: false,
   layer: 'full',
+  weeklyGoalMin: DEFAULT_WEEKLY_GOAL_MIN,
   view: 'staff',
   scrollSpeed: 1.0,
   dynamicsBonus: true,
@@ -110,6 +115,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setTempoRamp: on => set({ tempoRamp: on }),
       setWaitMode: on => set({ waitMode: on }),
       setLayer: layer => set({ layer }),
+      setWeeklyGoal: minutes =>
+        set({ weeklyGoalMin: Math.min(Math.max(Math.round(minutes), 10), 1000) }),
       setView: view => set({ view }),
       setScrollSpeed: v => set({ scrollSpeed: v }),
       setDynamicsBonus: on => set({ dynamicsBonus: on }),

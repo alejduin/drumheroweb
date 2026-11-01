@@ -3,6 +3,7 @@ import { AuthFailure, createAuthApi } from '@/api/cloudAuth'
 import type { AuthApi, AuthUser } from '@/api/cloudAuth'
 import { supabase } from '@/api/supabase'
 import { useLibraryStore } from '@/store/libraryStore'
+import { useHistoryStore } from '@/store/historyStore'
 
 // ─── Cuenta en la nube (PLAN_V2 B12) ─────────────────────────────────────────
 
@@ -132,5 +133,8 @@ const sb = supabase()
 
 export const useAuthStore = createAuthStore({
   api: sb ? createAuthApi(sb) : null,
-  onUser: () => useLibraryStore.getState().sync(),
+  // Biblioteca e historial (D7) de la cuenta; uno sin red no frena al otro
+  onUser: async () => {
+    await Promise.all([useLibraryStore.getState().sync(), useHistoryStore.getState().sync()])
+  },
 })

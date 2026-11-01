@@ -18,6 +18,8 @@ import type { SectionPrecision } from '@/scoring/analytics'
 import { sectionForMeasure } from '@/scoring/ScoreManager'
 import type { ScoreResults } from '@/scoring/ScoreManager'
 import { useProgressStore } from '@/store/progressStore'
+import { useHistoryStore } from '@/store/historyStore'
+import { BADGE_INFO, badgesFrom, progressLine, progressSummary } from '@/progress/history'
 import { useSettingsStore } from '@/store/settingsStore'
 import { SectionRuler } from '@/ui/game/SectionRuler'
 import { Button, Panel, StatTile, Stars } from '@/ui/primitives'
@@ -69,6 +71,16 @@ export function ResultsScreen({
   const timing = timingTendency(meanDeltaMs)
   const comboSection = bestComboRun ? sectionForMeasure(bySection, bestComboRun.startMeasure) : null
   const weak = findWeakestMeasures(results.byMeasure)
+  // Historial (D7): la partida ya se guardó al terminar (GameScreen)
+  const plays = useHistoryStore(s => s.plays)
+  const lastAdded = useHistoryStore(s => s.lastAdded)
+  const goalMin = useSettingsStore(s => s.weeklyGoalMin)
+  const [now] = useState(() => Date.now())
+  const progress = useMemo(() => progressSummary(plays, now, goalMin), [plays, now, goalMin])
+  const newBadges = useMemo(
+    () => (lastAdded ? badgesFrom(plays, lastAdded) : []),
+    [plays, lastAdded],
+  )
   const totalMeasures = chart.grid.downbeats.length
   const points = LEVEL_POINTS[level]
 
@@ -161,8 +173,14 @@ export function ResultsScreen({
               Elegir otra canción
             </Button>
             <div className="flex-1" />
+            {newBadges.length > 0 && (
+              <span className="rounded-[6px] border border-accent bg-accent-soft px-[9px] py-[5px] text-[12px] font-semibold">
+                Insignia nueva: {newBadges.map(id => BADGE_INFO[id].label).join(' · ')}
+              </span>
+            )}
             <span className="text-[13px] text-muted">
-              Partida nº {(before?.plays ?? 0) + 1} de esta canción
+              {progressLine(progress.streak, progress.weekMin, progress.goalMin)} · partida nº{' '}
+              {(before?.plays ?? 0) + 1} de esta canción
             </span>
           </div>
         </Panel>

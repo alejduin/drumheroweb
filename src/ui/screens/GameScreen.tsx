@@ -11,9 +11,12 @@ import { PRACTICE_LAYERS, filterLayer } from '@/chart/layers'
 import type { PracticeLayer } from '@/chart/layers'
 import { useGameSession } from '@/hooks/useGameSession'
 import type { ScoreResults } from '@/scoring/ScoreManager'
-import { selectPhase, useGameStore } from '@/store/gameStore'
+import { EMPTY_SNAPSHOT, selectPhase, useGameStore } from '@/store/gameStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useHistoryStore } from '@/store/historyStore'
+import { MIN_PLAY_S, playEntry } from '@/progress/history'
+import type { PlayInput } from '@/progress/history'
 import { GameHeader } from '@/ui/game/GameHeader'
 import { ScorePanel } from '@/ui/game/ScorePanel'
 import { SectionsPanel } from '@/ui/game/SectionsPanel'
@@ -169,6 +172,42 @@ function GameLayout({
       save()
     }
   }, [session, songRef, chart])
+
+  // Historial (D7): la partida al terminar; al salir o recargar, lo tocado si fue un rato
+  useEffect(() => {
+    // Al salir, el dispose de la sesión puede vaciar el store antes: se guarda el último HUD
+    let hud = useGameStore.getState().hud
+    const record = (completed: boolean) => {
+      const durationS = session.takePlayedSeconds(completed ? 0 : MIN_PLAY_S)
+      if (!completed && durationS === 0) return
+      const input: PlayInput = {
+        songId: chart.id,
+        title: chart.title,
+        difficulty: session.difficulty,
+        level: useSettingsStore.getState().level,
+        tempo: session.tempo,
+        layer: session.layer,
+        waitMode: session.practice.waitMode,
+        completed,
+        score: hud.score,
+        precision: hud.precision,
+        counts: hud.counts,
+        durationS,
+      }
+      useHistoryStore.getState().addPlay(playEntry(input, crypto.randomUUID(), Date.now()))
+    }
+    const unsubscribe = useGameStore.subscribe((state, prev) => {
+      if (state.hud !== EMPTY_SNAPSHOT) hud = state.hud
+      if (state.phase === 'ended' && prev.phase !== 'ended') record(true)
+    })
+    const onHide = () => record(false)
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      unsubscribe()
+      window.removeEventListener('pagehide', onHide)
+      record(false)
+    }
+  }, [session, chart])
   const playing = phase === 'playing'
   const [videoVisible, setVideoVisible] = useState(true)
 

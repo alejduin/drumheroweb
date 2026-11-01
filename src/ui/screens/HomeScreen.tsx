@@ -3,6 +3,7 @@ import { sessionSummary } from '@/game/lastSession'
 import { DIFFICULTY_LABELS } from '@/game/songMeta'
 import { useSessionStore } from '@/store/sessionStore'
 import { Button, Panel } from '@/ui/primitives'
+import { ProgressPanel } from '@/ui/home/ProgressPanel'
 
 interface HomeScreenProps {
   /** Recarga la última canción en su sección; falla si ya no está disponible. */
@@ -67,6 +68,8 @@ export function HomeScreen({ onContinue, onPlay, onImport, onSettings }: HomeScr
             {error}
           </p>
         )}
+
+        <ProgressPanel />
 
         <Button variant={last ? 'secondary' : 'primary'} size="lg" onClick={onPlay}>
           Biblioteca

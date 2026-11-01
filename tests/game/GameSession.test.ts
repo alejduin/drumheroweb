@@ -357,6 +357,21 @@ describe('GameSession', () => {
     expect(session.engine.chartNotes.every(n => n.piece !== 'crash')).toBe(true)
   })
 
+  it('takePlayedSeconds cuenta el tiempo real tocando, sin pausas (D7)', async () => {
+    let perf = 0
+    const { session } = await open({}, { perfNow: () => perf })
+    await session.play()
+    perf = 10_000
+    session.pause()
+    perf = 50_000 // en pausa no cuenta
+    await session.play()
+    perf = 55_000
+    expect(session.takePlayedSeconds(20)).toBe(0) // 15 s < 20: no se consume
+    expect(session.takePlayedSeconds()).toBe(15)
+    perf = 57_000
+    expect(session.takePlayedSeconds()).toBe(2)
+  })
+
   it('dispose quita la suscripción MIDI, cierra el contexto y limpia el store', async () => {
     const { ctx, session, hits } = await open()
     await session.play()

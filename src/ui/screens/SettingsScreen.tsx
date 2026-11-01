@@ -6,6 +6,7 @@ import type { Level, ScoreView } from '@/types'
 import { formatSignedMs } from '@/game/format'
 import { LEVEL_LABELS } from '@/game/songMeta'
 import { useSettingsStore } from '@/store/settingsStore'
+import { WEEKLY_GOAL_OPTIONS } from '@/progress/history'
 import { Button, Panel, SegmentedControl, Slider } from '@/ui/primitives'
 import { cn } from '@/ui/primitives/cn'
 
@@ -41,6 +42,8 @@ export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
     scrollSpeed,
     accent,
     mix,
+    weeklyGoalMin,
+    setWeeklyGoal,
     setLatencyOffset,
     setLevel,
     setView,
@@ -72,6 +75,19 @@ export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
               options={LEVEL_OPTIONS}
               value={level}
               onChange={setLevel}
+              fullWidth
+            />
+          </SettingRow>
+          <SettingRow
+            label="Meta semanal"
+            hint="Minutos de práctica por semana (de lunes a domingo). Se ve en la portada."
+            value={`${weeklyGoalMin} min`}
+          >
+            <SegmentedControl<string>
+              aria-label="Meta semanal"
+              options={WEEKLY_GOAL_OPTIONS.map(m => ({ value: String(m), label: `${m}` }))}
+              value={String(weeklyGoalMin)}
+              onChange={v => setWeeklyGoal(Number(v))}
               fullWidth
             />
           </SettingRow>
