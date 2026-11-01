@@ -116,7 +116,7 @@ compás y beat se derivan de `grid.beats` / `grid.downbeats`. `confidence < 0.6`
 
 ## Estado Actual
 
-**Fase:** D implementada (D1–D8); D1–D7 publicadas, D8 sin publicar. **Próximo:** verificar D8 con el kit (checklist de REQUIREMENTS_V2 §10) y publicarla; cerrar A6 (`worker/poc/REPORT.md`; faltan referencias y una 5.ª canción).
+**Fase:** D implementada y publicada (D1–D8). **Próximo:** verificar D1–D8 con el kit (para D8, checklist de REQUIREMENTS_V2 §10 con el panel de rendimiento); cerrar A6 (`worker/poc/REPORT.md`; faltan referencias y una 5.ª canción).
 
 - [x] Fase 0 — preparación (design/, strict typecheck, husky, CLAUDE.md V2)
 - [ ] Fase A — prueba de concepto de IA: A1–A5 hechas; falta A6 (`worker/poc/REPORT.md`)
