@@ -11,6 +11,7 @@ import type { DownloadedResult, TrackerState } from '@/library/jobTracker'
 import { statusForChart, summaryFromChart } from '@/library/status'
 import { openLibraryDb } from '@/storage/libraryDb'
 import type { AssetKind, AssetMap, LibraryDb, LibrarySong } from '@/storage/libraryDb'
+import { repairChartGrid } from '@/chart/gridRepair'
 
 // ─── Biblioteca de canciones importadas (PLAN_V2 B13 + B12) ──────────────────
 // IndexedDB es la copia de trabajo (se juega sin red); el store refleja la lista
@@ -355,7 +356,8 @@ function toBundle(
   if (!stems && !audio) throw new Error('Falta el audio de la canción.')
   return {
     chart: {
-      ...chart,
+      // Rejillas analizadas antes de reparar beats falsos se arreglan al abrir
+      ...repairChartGrid(chart),
       title: song.title,
       artist: song.artist,
       youtubeUrl: song.youtubeUrl,

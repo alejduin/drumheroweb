@@ -4,6 +4,7 @@ import addFormats from 'ajv-formats'
 import schema from '@shared/chart-v2.schema.json'
 import type { ChartV2 } from '@/types'
 import { convertV1ToV2, isChartV1 } from './convertV1'
+import { repairChartGrid } from './gridRepair'
 import { validateChartInvariants } from './invariants'
 import type { ChartIssue } from './invariants'
 
@@ -44,7 +45,8 @@ export function chartIssues(raw: unknown): ChartIssue[] {
 
 /**
  * Valida y devuelve un chart v2. Acepta también charts v1 (sin `version`, con
- * `measures`), que se convierten con convertV1ToV2. Lanza ChartParseError.
+ * `measures`), que se convierten con convertV1ToV2. Repara el arranque de la
+ * rejilla si el detector de pulso dejó beats falsos en la intro. Lanza ChartParseError.
  */
 export function parseChart(raw: unknown): ChartV2 {
   let chart = raw
@@ -57,5 +59,5 @@ export function parseChart(raw: unknown): ChartV2 {
   }
   const issues = chartIssues(chart)
   if (issues.length > 0) throw new ChartParseError(issues)
-  return chart as ChartV2
+  return repairChartGrid(chart as ChartV2)
 }

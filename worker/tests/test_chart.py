@@ -13,6 +13,7 @@ from app.pipeline.chart import (
     clean_grid,
     estimate_beats_per_bar,
     estimate_bpm,
+    repair_grid,
     shared_dir,
     song_id_from_name,
     validate_chart,
@@ -137,3 +138,41 @@ def test_peaks_are_normalized_blocks():
     peaks = compute_peaks(audio, 44100, samples_per_peak=441)
     assert peaks["samplesPerPeak"] == 441 and peaks["sampleRate"] == 44100
     assert peaks["peaks"] == [1.0, 0.5, 0.0]
+
+
+def _range(start: float, step: float, n: int) -> list[float]:
+    return [round(start + i * step, 4) for i in range(n)]
+
+
+def test_repair_grid_drops_false_intro_beats():
+    # Arranque real de "Sonne": mismo caso que tests/chart/gridRepair.test.ts
+    grid = CleanGrid(
+        beats=[0.12, 0.28, 0.52, 0.66, 0.94, 1.06, 1.34, 1.44, 1.78, 2.62, *_range(3.42, 0.4, 20)],
+        downbeats=[0.94, 1.06, 2.62, 4.22, 5.82, 7.42, 9.02],
+    )
+    repaired = repair_grid(grid)
+    assert repaired.beats[:9] == [0.22, 0.62, 1.02, 1.42, 1.82, 2.22, 2.62, 3.02, 3.42]
+    assert repaired.downbeats[:4] == [1.02, 2.62, 4.22, 5.82]
+
+
+def test_repair_grid_removes_duplicate_beats():
+    beats = [0, 0.7, 1.4, 2.02, 2.1, 2.8, 3.42, 3.5, 4.2, 4.9, 5.6, 6.3, 7.0]
+    repaired = repair_grid(CleanGrid(beats=beats, downbeats=[0, 2.8, 5.6]))
+    assert repaired.beats == [0, 0.7, 1.4, 2.1, 2.8, 3.5, 4.2, 4.9, 5.6, 6.3, 7.0]
+    assert repaired.downbeats == [0, 2.8, 5.6]
+
+
+def test_repair_grid_moves_downbeat_off_duplicate():
+    beats = [0, 0.7, 1.4, 2.1, 2.72, 2.8, 3.5, 4.2, 4.9, 5.6, 6.3]
+    repaired = repair_grid(CleanGrid(beats=beats, downbeats=[0, 2.72, 2.8, 5.6]))
+    assert repaired.downbeats == [0, 2.8, 5.6]
+
+
+def test_repair_grid_removes_short_measures():
+    repaired = repair_grid(CleanGrid(beats=_range(0, 0.5, 24), downbeats=[0, 2, 2.5, 4.5, 6.5, 8.5]))
+    assert repaired.downbeats == [0, 2, 4.5, 6.5, 8.5]
+
+
+def test_repair_grid_keeps_regular_grid():
+    grid = CleanGrid(beats=_range(2, 0.5, 16), downbeats=[2.0, 4.0, 6.0, 8.0])
+    assert repair_grid(grid) == grid

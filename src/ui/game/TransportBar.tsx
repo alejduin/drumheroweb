@@ -9,7 +9,7 @@ import { useAnimationFrame } from '@/hooks/useAnimationFrame'
 import { Button, Chip, IconButton } from '@/ui/primitives'
 import { SectionRuler } from './SectionRuler'
 import { Waveform } from './Waveform'
-import { PauseIcon, PlayIcon } from './icons'
+import { PauseIcon, PlayIcon, RestartIcon } from './icons'
 
 interface TransportBarProps {
   clock: SongClock
@@ -84,6 +84,14 @@ export function TransportBar({
           onClick={onToggle}
         >
           {playing ? <PauseIcon /> : <PlayIcon />}
+        </IconButton>
+        <IconButton
+          variant="ghost"
+          aria-label="Volver al principio"
+          title="Volver al principio de la canción (Inicio)"
+          onClick={() => onSeek(0)}
+        >
+          <RestartIcon size={14} />
         </IconButton>
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-[13px] font-semibold">

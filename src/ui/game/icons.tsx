@@ -17,6 +17,15 @@ export function PlayIcon({ size = 16 }: { size?: number }) {
   )
 }
 
+export function RestartIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+      <rect x="2.5" y="2.5" width="2.2" height="11" rx="0.8" />
+      <path d="M13.5 2.5 L5.5 8 L13.5 13.5 Z" />
+    </svg>
+  )
+}
+
 export function CloseIcon({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" aria-hidden="true">

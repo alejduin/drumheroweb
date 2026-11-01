@@ -190,7 +190,7 @@ export default function App() {
           songRef={songRef}
           startAtS={startAtS}
           practice={practice}
-          onExit={() => setScreen('library')}
+          onExit={() => setScreen('home')}
           onFinished={handleFinished}
           onRecalibrate={() => openCalibration('game')}
         />

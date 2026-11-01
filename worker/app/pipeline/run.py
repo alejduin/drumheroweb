@@ -17,7 +17,14 @@ from pathlib import Path
 import numpy as np
 
 from app.audio import SAMPLE_RATE, AudioDecodeError, decode, encode_opus, probe, to_mono
-from app.pipeline.chart import SongMeta, build_chart, clean_grid, song_id_from_name, validate_chart
+from app.pipeline.chart import (
+    SongMeta,
+    build_chart,
+    clean_grid,
+    repair_grid,
+    song_id_from_name,
+    validate_chart,
+)
 from app.pipeline.dynamics import estimate_velocities
 from app.pipeline.peaks import compute_peaks
 from app.pipeline.quantize import QuantizeOptions, build_grid, quantize
@@ -121,7 +128,7 @@ def analyze(
         beat_grid = models.beat_tracker.track(to_mono(mix), SAMPLE_RATE)
         if len(beat_grid.beats) < 2:
             raise PipelineError("TRANSCRIPTION_FAILED", "no se detectó el pulso de la canción")
-        grid = clean_grid(beat_grid.beats, beat_grid.downbeats, duration_s)
+        grid = repair_grid(clean_grid(beat_grid.beats, beat_grid.downbeats, duration_s))
 
     with stage("quantize"):
         points = build_grid(np.array(grid.beats), duration_s, options)

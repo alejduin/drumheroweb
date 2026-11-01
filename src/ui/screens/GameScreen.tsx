@@ -225,6 +225,7 @@ function GameLayout({
 
   const toggle = useCallback(() => void session.toggle(), [session])
   const seek = useCallback((t: number) => session.seek(t), [session])
+  const restart = useCallback(() => session.seek(0), [session])
   const seekSection = useCallback(
     (section: ChartSection) => session.seek(sectionStartS(chart.grid, section)),
     [session, chart.grid],
@@ -313,13 +314,16 @@ function GameLayout({
     session.setDynamicsBonus(on)
   }
 
-  // Espacio = play/pausa; V = mostrar/ocultar video; Esc = salir a la lista
+  // Espacio = play/pausa; Inicio = al principio; V = mostrar/ocultar video; Esc = salir a la portada
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return
       if (e.code === 'Space') {
         e.preventDefault() // ni scroll ni "clic" en el botón con foco
         void session.toggle()
+      } else if (e.code === 'Home') {
+        e.preventDefault()
+        session.seek(0)
       } else if (e.code === 'KeyV') {
         setVideoVisible(v => !v)
       } else if (e.code === 'Escape') {
@@ -347,6 +351,8 @@ function GameLayout({
         clock={session.clock}
         playing={playing}
         onToggle={toggle}
+        onRestart={restart}
+        onExit={onExit}
       />
       <ScorePanel
         source={session.engine}
