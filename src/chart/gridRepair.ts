@@ -9,7 +9,9 @@ import { measureAt } from './grid'
 //   1. Intro: se descarta lo anterior al primer tramo de pulso estable y se
 //      rellena hacia atrás con ese pulso y compases completos.
 //   2. Beats duplicados: de dos beats demasiado juntos queda el que sigue el pulso.
-//   3. Compases de menos de medio compás: se quita su downbeat.
+//   3. Zonas revueltas entre dos tramos de pulso estable: si el hueco cabe un
+//      número entero de beats, se rehacen equiespaciados (igual con los compases).
+//   4. Compases de menos de medio compás: se quita su downbeat.
 // Port en Python: repair_grid (worker/app/pipeline/chart.py).
 
 /** Intervalos seguidos regulares que cuentan como pulso estable. */
@@ -93,16 +95,73 @@ function repairLeadIn(grid: ChartGrid, perBarFallback: number): ChartGrid {
   return { beats: newBeats, downbeats: [...leadDown, ...keptDown] }
 }
 
-/** Paso 2: beats duplicados (más juntos que DUPLICATE_FRACTION del pulso local). */
-function removeDuplicateBeats(grid: ChartGrid): ChartGrid {
-  const { beats } = grid
-  const intervals = intervalsOf(beats)
-  const localBeat = (i: number) => {
+/** Pulso local: mediana de los intervalos alrededor del beat i. */
+function localBeatOf(intervals: readonly number[]) {
+  return (i: number) => {
     const window = intervals
       .slice(Math.max(0, i - LOCAL_WINDOW), i + LOCAL_WINDOW)
       .filter(d => d >= MIN_INTERVAL_S)
     return window.length ? median(window) : median(intervals)
   }
+}
+
+/** Cada downbeat pasa al beat más cercano de `beats` (sin repetir). */
+function snapDownbeats(beats: readonly number[], downbeats: readonly number[]): number[] {
+  const out: number[] = []
+  for (const d of downbeats) {
+    let nearest = beats[0]
+    for (const b of beats) if (Math.abs(b - d) < Math.abs(nearest - d)) nearest = b
+    if (out.length === 0 || nearest > out[out.length - 1]) out.push(nearest)
+  }
+  return out
+}
+
+/**
+ * Marca los elementos que están dentro de un tramo de al menos `run` huecos
+ * seguidos que cumplen `ok` (el hueco i va del elemento i al i + 1).
+ */
+function stableMarks(gaps: number, ok: (i: number) => boolean, run: number): boolean[] {
+  const stable = new Array<boolean>(gaps + 1).fill(false)
+  let start = 0
+  for (let i = 0; i <= gaps; i++) {
+    if (i < gaps && ok(i)) continue
+    if (i - start >= run) stable.fill(true, start, i + 1)
+    start = i + 1
+  }
+  return stable
+}
+
+/**
+ * Recorre los anclajes (elementos estables) y rehace con `fill` lo que hay entre
+ * dos seguidos, o el hueco entre dos contiguos que no cumple `ok`; si `fill`
+ * devuelve null, se deja lo original.
+ */
+function rebuildBetweenAnchors<T>(
+  items: readonly T[],
+  stable: readonly boolean[],
+  ok: (i: number) => boolean,
+  fill: (from: number, to: number) => T[] | null,
+): T[] {
+  const first = stable.indexOf(true)
+  if (first < 0) return [...items]
+  const out = items.slice(0, first + 1)
+  let previous = first
+  for (let j = first + 1; j < items.length; j++) {
+    if (!stable[j]) continue
+    if (j > previous + 1 || !ok(previous)) {
+      out.push(...(fill(previous, j) ?? items.slice(previous + 1, j)))
+    }
+    out.push(items[j])
+    previous = j
+  }
+  out.push(...items.slice(previous + 1))
+  return out
+}
+
+/** Paso 2: beats duplicados (más juntos que DUPLICATE_FRACTION del pulso local). */
+function removeDuplicateBeats(grid: ChartGrid): ChartGrid {
+  const { beats } = grid
+  const localBeat = localBeatOf(intervalsOf(beats))
 
   const kept: number[] = []
   for (let i = 0; i < beats.length; i++) {
@@ -120,24 +179,56 @@ function removeDuplicateBeats(grid: ChartGrid): ChartGrid {
     }
   }
   if (kept.length === beats.length) return grid
-
-  // Cada downbeat pasa al beat que quedó más cerca
-  const downbeats: number[] = []
-  for (const d of grid.downbeats) {
-    let nearest = kept[0]
-    for (const b of kept) if (Math.abs(b - d) < Math.abs(nearest - d)) nearest = b
-    if (downbeats.length === 0 || nearest > downbeats[downbeats.length - 1]) {
-      downbeats.push(nearest)
-    }
-  }
-  return { beats: kept, downbeats }
+  return { beats: kept, downbeats: snapDownbeats(kept, grid.downbeats) }
 }
 
-/** Paso 3: compases de menos de medio compás (se quita el downbeat que los empieza tarde). */
+/**
+ * Paso 3a: beats entre dos tramos estables. Si el hueco mide un número entero
+ * de pulsos (± TOLERANCE), se rehacen equiespaciados; si no, quedan como están.
+ */
+function regularizeBeats(grid: ChartGrid): ChartGrid {
+  const { beats } = grid
+  const intervals = intervalsOf(beats)
+  const localBeat = localBeatOf(intervals)
+  const regular = (i: number) => Math.abs(intervals[i] - localBeat(i)) <= localBeat(i) * TOLERANCE
+  const stable = stableMarks(intervals.length, regular, REGULAR_RUN)
+  const rebuilt = rebuildBetweenAnchors(beats, stable, regular, (from, to) => {
+    const a = beats[from]
+    const b = beats[to]
+    const step = (localBeat(from) + localBeat(to - 1)) / 2
+    const n = Math.round((b - a) / step)
+    if (n < 1 || Math.abs(b - a - n * step) > step * TOLERANCE) return null
+    return Array.from({ length: n - 1 }, (_, k) => round(a + ((b - a) * (k + 1)) / n))
+  })
+  if (rebuilt.length === beats.length && rebuilt.every((b, i) => b === beats[i])) return grid
+  return { beats: rebuilt, downbeats: snapDownbeats(rebuilt, grid.downbeats) }
+}
+
+/**
+ * Paso 3b: lo mismo con los compases, contando en beats: entre dos tramos de
+ * compases completos, si el hueco es un múltiplo del compás se rehace.
+ */
+function regularizeDownbeats(grid: ChartGrid, perBarFallback: number): ChartGrid {
+  const { beats, downbeats } = grid
+  const perBar = beatsPerBar(beats, downbeats, perBarFallback)
+  const index = downbeats.map(d => indexOfTime(beats, d))
+  const fullBar = (i: number) => index[i + 1] - index[i] === perBar
+  // Dos compases completos seguidos bastan para anclar
+  const stable = stableMarks(index.length - 1, fullBar, 2)
+  const rebuilt = rebuildBetweenAnchors(index, stable, fullBar, (from, to) => {
+    const gap = index[to] - index[from]
+    if (gap % perBar !== 0) return null
+    return Array.from({ length: gap / perBar - 1 }, (_, k) => index[from] + perBar * (k + 1))
+  })
+  if (rebuilt.length === index.length && rebuilt.every((v, i) => v === index[i])) return grid
+  return { beats, downbeats: rebuilt.map(i => beats[i]) }
+}
+
+/** Paso 4: compases de medio compás o menos (se quita el downbeat que los empieza tarde). */
 function removeShortMeasures(grid: ChartGrid, perBarFallback: number): ChartGrid {
   const { beats, downbeats } = grid
   const perBar = beatsPerBar(beats, downbeats, perBarFallback)
-  const minBeats = Math.max(1, Math.ceil(perBar / 2))
+  const minBeats = Math.floor(perBar / 2) + 1
   const kept: number[] = []
   for (const d of downbeats) {
     const last = kept[kept.length - 1]
@@ -156,7 +247,8 @@ export function repairGrid(grid: ChartGrid, perBarFallback = 4): ChartGrid | nul
   if (grid.beats.length < REGULAR_RUN + 2) return null
   const leadIn = repairLeadIn(grid, perBarFallback)
   const deduped = removeDuplicateBeats(leadIn)
-  const repaired = removeShortMeasures(deduped, perBarFallback)
+  const regular = regularizeDownbeats(regularizeBeats(deduped), perBarFallback)
+  const repaired = removeShortMeasures(regular, perBarFallback)
   return repaired === grid ? null : repaired
 }
 

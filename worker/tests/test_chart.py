@@ -173,6 +173,25 @@ def test_repair_grid_removes_short_measures():
     assert repaired.downbeats == [0, 2, 4.5, 6.5, 8.5]
 
 
+def test_repair_grid_rebuilds_zone_with_two_shifted_series():
+    # Mismo caso que tests/chart/gridRepair.test.ts ("Sonne", 12–16 s)
+    beats = [
+        *_range(9.02, 0.4, 8),
+        *[12.22, 12.42, 12.62, 13.02, 13.22, 13.42, 13.64, 14.04, 14.22, 14.44, 14.62, 14.82, 15.02],
+        *_range(15.42, 0.4, 12),
+    ]
+    downbeats = [9.02, 10.62, 12.22, 12.42, 13.64, 14.04, 15.42, 17.02, 18.62]
+    repaired = repair_grid(CleanGrid(beats=beats, downbeats=downbeats))
+    zone = [b for b in repaired.beats if 12 < b < 15.5]
+    assert zone == [12.22, 12.62, 13.02, 13.42, 13.82, 14.22, 14.62, 15.02, 15.42]
+    assert repaired.downbeats == [9.02, 10.62, 12.22, 13.82, 15.42, 17.02, 18.62]
+
+
+def test_repair_grid_fills_missing_beat():
+    beats = [*_range(0, 0.7, 8), *_range(6.3, 0.7, 8)]
+    assert repair_grid(CleanGrid(beats=beats, downbeats=[0, 2.8, 8.4])).beats == _range(0, 0.7, 17)
+
+
 def test_repair_grid_keeps_regular_grid():
     grid = CleanGrid(beats=_range(2, 0.5, 16), downbeats=[2.0, 4.0, 6.0, 8.0])
     assert repair_grid(grid) == grid

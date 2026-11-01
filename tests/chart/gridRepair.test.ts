@@ -67,6 +67,40 @@ describe('repairGrid', () => {
     expect(grid.downbeats).toEqual([0, 2, 4.5, 6.5, 8.5])
   })
 
+  it('rehace una zona con dos series de beats desfasadas', () => {
+    // Caso real de "Sonne" (12–16 s): pulso de 0.4 s; entre 13.42 y 15.42 hay dos
+    // series mezcladas (14.04/14.44/14.82 y 14.22/14.62/15.02) y falta 13.82
+    const beats = [
+      ...range(9.02, 0.4, 8),
+      12.22,
+      12.42,
+      12.62,
+      13.02,
+      13.22,
+      13.42,
+      13.64,
+      14.04,
+      14.22,
+      14.44,
+      14.62,
+      14.82,
+      15.02,
+      ...range(15.42, 0.4, 12),
+    ]
+    const downbeats = [9.02, 10.62, 12.22, 12.42, 13.64, 14.04, 15.42, 17.02, 18.62]
+    const grid = repairGrid({ beats, downbeats })!
+    expect(grid.beats.filter(b => b > 12 && b < 15.5)).toEqual([
+      12.22, 12.62, 13.02, 13.42, 13.82, 14.22, 14.62, 15.02, 15.42,
+    ])
+    expect(grid.downbeats).toEqual([9.02, 10.62, 12.22, 13.82, 15.42, 17.02, 18.62])
+  })
+
+  it('rellena un beat que falta entre dos tramos estables', () => {
+    const beats = [...range(0, 0.7, 8), ...range(6.3, 0.7, 8)] // falta 5.6
+    const grid = repairGrid({ beats, downbeats: [0, 2.8, 8.4] })!
+    expect(grid.beats).toEqual(range(0, 0.7, 17))
+  })
+
   it('no toca una rejilla regular', () => {
     expect(repairGrid({ beats: range(2, 0.5, 16), downbeats: [2, 4, 6, 8] })).toBeNull()
   })

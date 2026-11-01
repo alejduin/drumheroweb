@@ -136,16 +136,64 @@ def _repair_lead_in(grid: CleanGrid, per_bar_fallback: int) -> CleanGrid:
     return CleanGrid(beats=new_beats, downbeats=lead_down + kept_down)
 
 
-def _remove_duplicate_beats(grid: CleanGrid) -> CleanGrid:
-    """De dos beats demasiado juntos queda el que sigue el pulso."""
-    beats = grid.beats
-    intervals = np.diff(beats)
+def _local_beat_of(intervals: np.ndarray):
+    """Pulso local: mediana de los intervalos alrededor del beat i."""
 
     def local_beat(i: int) -> float:
         window = intervals[max(0, i - REPAIR_LOCAL_WINDOW) : i + REPAIR_LOCAL_WINDOW]
         window = window[window >= REPAIR_MIN_INTERVAL_S]
         return float(np.median(window if len(window) else intervals))
 
+    return local_beat
+
+
+def _snap_downbeats(beats: list[float], downbeats: list[float]) -> list[float]:
+    """Cada downbeat pasa al beat más cercano (sin repetir)."""
+    arr = np.array(beats)
+    out: list[float] = []
+    for d in downbeats:
+        nearest = float(arr[np.argmin(np.abs(arr - d))])
+        if not out or nearest > out[-1]:
+            out.append(nearest)
+    return out
+
+
+def _stable_marks(gaps: int, ok, run: int) -> list[bool]:
+    """Elementos dentro de un tramo de >= run huecos seguidos que cumplen ok."""
+    stable = [False] * (gaps + 1)
+    start = 0
+    for i in range(gaps + 1):
+        if i < gaps and ok(i):
+            continue
+        if i - start >= run:
+            stable[start : i + 1] = [True] * (i + 1 - start)
+        start = i + 1
+    return stable
+
+
+def _rebuild_between_anchors(items: list, stable: list[bool], ok, fill) -> list:
+    """Rehace con fill lo que hay entre dos anclajes (o el hueco contiguo que no cumple ok)."""
+    if True not in stable:
+        return list(items)
+    first = stable.index(True)
+    out = list(items[: first + 1])
+    previous = first
+    for j in range(first + 1, len(items)):
+        if not stable[j]:
+            continue
+        if j > previous + 1 or not ok(previous):
+            filled = fill(previous, j)
+            out.extend(items[previous + 1 : j] if filled is None else filled)
+        out.append(items[j])
+        previous = j
+    out.extend(items[previous + 1 :])
+    return out
+
+
+def _remove_duplicate_beats(grid: CleanGrid) -> CleanGrid:
+    """De dos beats demasiado juntos queda el que sigue el pulso."""
+    beats = grid.beats
+    local_beat = _local_beat_of(np.diff(beats))
     kept: list[float] = []
     for i, b in enumerate(beats):
         local = local_beat(i)
@@ -155,21 +203,60 @@ def _remove_duplicate_beats(grid: CleanGrid) -> CleanGrid:
             kept[-1] = b
     if len(kept) == len(beats):
         return grid
+    return CleanGrid(beats=kept, downbeats=_snap_downbeats(kept, grid.downbeats))
 
-    kept_arr = np.array(kept)
-    downbeats: list[float] = []
-    for d in grid.downbeats:
-        nearest = float(kept_arr[np.argmin(np.abs(kept_arr - d))])
-        if not downbeats or nearest > downbeats[-1]:
-            downbeats.append(nearest)
-    return CleanGrid(beats=kept, downbeats=downbeats)
+
+def _regularize_beats(grid: CleanGrid) -> CleanGrid:
+    """Entre dos tramos estables, si el hueco mide un número entero de pulsos, beats equiespaciados."""
+    beats = grid.beats
+    intervals = np.diff(beats)
+    local_beat = _local_beat_of(intervals)
+
+    def regular(i: int) -> bool:
+        return abs(intervals[i] - local_beat(i)) <= local_beat(i) * REPAIR_TOLERANCE
+
+    def fill(start: int, end: int):
+        a, b = beats[start], beats[end]
+        step = (local_beat(start) + local_beat(end - 1)) / 2
+        n = round((b - a) / step)
+        if n < 1 or abs(b - a - n * step) > step * REPAIR_TOLERANCE:
+            return None
+        return [round(a + (b - a) * (k + 1) / n, TIME_DECIMALS) for k in range(n - 1)]
+
+    stable = _stable_marks(len(intervals), regular, REPAIR_REGULAR_RUN)
+    rebuilt = _rebuild_between_anchors(beats, stable, regular, fill)
+    if rebuilt == beats:
+        return grid
+    return CleanGrid(beats=rebuilt, downbeats=_snap_downbeats(rebuilt, grid.downbeats))
+
+
+def _regularize_downbeats(grid: CleanGrid, per_bar_fallback: int) -> CleanGrid:
+    """Lo mismo con los compases, contando en beats (el hueco debe ser múltiplo del compás)."""
+    beats, downbeats = grid.beats, grid.downbeats
+    per_bar = _beats_per_bar(beats, downbeats, per_bar_fallback)
+    index = [_index_of_time(beats, d) for d in downbeats]
+
+    def full_bar(i: int) -> bool:
+        return index[i + 1] - index[i] == per_bar
+
+    def fill(start: int, end: int):
+        gap = index[end] - index[start]
+        if gap % per_bar:
+            return None
+        return [index[start] + per_bar * (k + 1) for k in range(gap // per_bar - 1)]
+
+    stable = _stable_marks(len(index) - 1, full_bar, 2)  # dos compases completos anclan
+    rebuilt = _rebuild_between_anchors(index, stable, full_bar, fill)
+    if rebuilt == index:
+        return grid
+    return CleanGrid(beats=beats, downbeats=[beats[i] for i in rebuilt])
 
 
 def _remove_short_measures(grid: CleanGrid, per_bar_fallback: int) -> CleanGrid:
-    """Quita el downbeat que empieza un compás de menos de medio compás."""
+    """Quita el downbeat que empieza un compás de medio compás o menos."""
     beats, downbeats = grid.beats, grid.downbeats
     per_bar = _beats_per_bar(beats, downbeats, per_bar_fallback)
-    min_beats = max(1, -(-per_bar // 2))
+    min_beats = per_bar // 2 + 1
     kept: list[float] = []
     for d in downbeats:
         if not kept or _index_of_time(beats, d) - _index_of_time(beats, kept[-1]) >= min_beats:
@@ -178,11 +265,15 @@ def _remove_short_measures(grid: CleanGrid, per_bar_fallback: int) -> CleanGrid:
 
 
 def repair_grid(grid: CleanGrid, per_bar_fallback: int = DEFAULT_BEATS_PER_BAR) -> CleanGrid:
-    """Intro sin pulso estable, beats duplicados y compases aplastados. Igual si ya estaba bien."""
+    """Intro sin pulso estable, beats duplicados, zonas revueltas y compases aplastados.
+
+    Devuelve la misma rejilla si ya estaba bien.
+    """
     if len(grid.beats) < REPAIR_REGULAR_RUN + 2:
         return grid
     grid = _repair_lead_in(grid, per_bar_fallback)
     grid = _remove_duplicate_beats(grid)
+    grid = _regularize_downbeats(_regularize_beats(grid), per_bar_fallback)
     return _remove_short_measures(grid, per_bar_fallback)
 
 
