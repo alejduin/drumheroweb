@@ -244,6 +244,64 @@ describe('GameSession', () => {
     expect(session.player.playbackRate).toBe(1)
   })
 
+  it('setLoop salta al inicio del loop y un seek fuera lo quita', async () => {
+    const { session } = await open()
+    const changes: number[] = []
+    session.subscribePractice(() => changes.push(1))
+    session.setLoop({ startMeasure: 3, endMeasure: 2 }) // se ordena
+    expect(session.practice.loop).toEqual({ startMeasure: 2, endMeasure: 3 })
+    // Compases de 2 s: el 2 empieza en 2 s
+    expect(session.clock.now()).toBe(2)
+    session.seek(3)
+    expect(session.practice.loop).not.toBeNull()
+    session.seek(7)
+    expect(session.practice.loop).toBeNull()
+    expect(changes.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('con cuenta, play retrasa el audio un compás y la cuenta suena por la salida principal', async () => {
+    const { ctx, session } = await open({}, {})
+    session.setCountIn(true)
+    session.seek(2)
+    await session.play()
+    // Cuatro beats de 0,5 s antes de 2 s: el audio arranca 2 s después
+    expect(ctx.lastSource.startArgs?.[1]).toBeCloseTo(2, 9)
+    expect(ctx.lastSource.startArgs?.[0]).toBeCloseTo(ctx.currentTime + 0.05 + 2, 9)
+    expect(ctx.gains.filter(g => g.output === ctx.destination).length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('la rampa sube el tempo 5 % tras una vuelta ≥ 90 % y estira solo el tramo del loop', async () => {
+    const stretch = vi.fn<StretchFn>(async (channels, sampleRate, rate) =>
+      stretchChannels(channels, sampleRate, rate),
+    )
+    const { session } = await open({ audio: { stems: null, original: BYTES } }, { stretch })
+    await session.setTempo(0.75) // canción entera
+    const fullLength = stretch.mock.calls[0][0][0].length
+    session.setTempoRamp(true)
+    session.setLoop({ startMeasure: 1, endMeasure: 1 })
+    // Vuelta sin notas: no sube
+    const engine = session.engine as unknown as {
+      emit: (set: unknown, value: unknown) => void
+      loopListeners: unknown
+    }
+    const lap = (judgements: unknown[]) => engine.emit(engine.loopListeners, { lap: 1, judgements })
+    lap([])
+    expect(session.practice.lastLap).toMatchObject({ precision: null, nextTempo: 0.75 })
+    lap([{ judgement: 'perfect' }, { judgement: 'close' }])
+    expect(session.practice.lastLap).toMatchObject({ precision: 1, tempo: 0.75, nextTempo: 0.8 })
+    expect(session.tempo).toBe(0.8)
+    expect(session.practice.tempoPending).toBe(true)
+    await vi.waitFor(() => expect(session.player.playbackRate).toBe(0.8))
+    // El segundo estirado es solo el compás 1 (0–2 s) + 1 s de margen, de los 6 s
+    expect(fullLength).toBe(600)
+    expect(stretch.mock.calls[1][0][0].length).toBe(300)
+    expect(session.practice.tempoPending).toBe(false)
+    // Sin rampa no cambia
+    session.setTempoRamp(false)
+    lap([{ judgement: 'perfect' }])
+    expect(session.tempo).toBe(0.8)
+  })
+
   it('dispose quita la suscripción MIDI, cierra el contexto y limpia el store', async () => {
     const { ctx, session, hits } = await open()
     await session.play()

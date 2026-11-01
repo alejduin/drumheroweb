@@ -3,6 +3,7 @@ import { LEVEL_POINTS, starsFor } from '@/constants/scoring'
 import type { ChartV2 } from '@/types'
 import { formatPercent, formatScore, formatSignedMs } from '@/game/format'
 import { PRACTICE_TEMPO } from '@/game/sections'
+import type { PracticeRequest } from '@/ui/screens/GameScreen'
 import { LEVEL_LABELS } from '@/game/songMeta'
 import {
   buildHeadline,
@@ -30,11 +31,20 @@ interface ResultsScreenProps {
   /** Momento en que terminó la partida; identifica la partida en el progreso. */
   playedAt: number
   onRetry: () => void
+  /** Vuelve a la partida con un loop en esos compases y al tempo de práctica. */
+  onPractice: (request: PracticeRequest) => void
   onMenu: () => void
 }
 
 /** Resultados de la partida (design/Results.dc.html, PLAN_V2 §4.5). */
-export function ResultsScreen({ chart, results, playedAt, onRetry, onMenu }: ResultsScreenProps) {
+export function ResultsScreen({
+  chart,
+  results,
+  playedAt,
+  onRetry,
+  onPractice,
+  onMenu,
+}: ResultsScreenProps) {
   const level = useSettingsStore(s => s.level)
   // El tempo con que se jugó (el último elegido)
   const tempo = useSettingsStore(s => s.tempo)
@@ -134,8 +144,12 @@ export function ResultsScreen({ chart, results, playedAt, onRetry, onMenu }: Res
               <Button
                 variant="primary"
                 size="lg"
-                disabled
-                title="La práctica por compases llega en la Fase D"
+                onClick={() =>
+                  onPractice({
+                    loop: { startMeasure: weak.startMeasure, endMeasure: weak.endMeasure },
+                    tempo: PRACTICE_TEMPO,
+                  })
+                }
               >
                 {weak.startMeasure === weak.endMeasure
                   ? `Practicar el compás ${weak.startMeasure}`

@@ -12,6 +12,13 @@ export interface PlayerContext extends ClockContext {
   createBufferSource(): AudioBufferSourceNode
 }
 
+/** Pistas estiradas a otro tempo: cubren [startS, endS) en segundos de canción. */
+export interface StretchedTracks {
+  buffers: readonly AudioBuffer[]
+  startS: number
+  endS: number
+}
+
 export interface StemTrack {
   buffer: AudioBuffer
   /** Nodo de salida (entrada del canal del Mixer, o ctx.destination). */
@@ -32,7 +39,9 @@ export class StemPlayer {
   private sources: AudioBufferSourceNode[] = []
   private rate = 1
   /** Pistas ya estiradas a `rate` (mismo orden que tracks); null = las originales. */
-  private stretched: readonly AudioBuffer[] | null = null
+  private stretched: StretchedTracks | null = null
+  /** Posición desde la que arrancó el último play (sin contar la cuenta previa). */
+  private playOffset = 0
   private onEndedCallback: (() => void) | null = null
 
   private readonly ctx: PlayerContext
@@ -58,12 +67,22 @@ export class StemPlayer {
     this.onEndedCallback = callback
   }
 
-  play(): void {
+  /**
+   * Arranca desde la posición del reloj. `leadS` (segundos de canción) retrasa el
+   * audio para una cuenta previa: el reloj corre esos segundos antes de `offset`
+   * sin que suene nada, así los clicks de la cuenta caen en el mismo reloj.
+   */
+  play(leadS = 0): void {
     if (this.clock.isPlaying) return
     const offset = this.clamp(this.clock.now())
     if (offset >= this.durationS) return
 
-    const when = this.ctx.currentTime + START_LEAD_S
+    const when = this.ctx.currentTime + START_LEAD_S + Math.max(leadS, 0) / this.rate
+    // Las pistas estiradas sirven si el arranque cae en el tramo que cubren
+    const region =
+      this.stretched && offset >= this.stretched.startS && offset < this.stretched.endS
+        ? this.stretched
+        : null
     const sources: AudioBufferSourceNode[] = []
     let longest: AudioBufferSourceNode | null = null
     let longestS = -1
@@ -71,13 +90,12 @@ export class StemPlayer {
       // Un stem más corto que la posición no tiene nada que sonar
       if (offset >= track.buffer.duration) continue
       const source = this.ctx.createBufferSource()
-      const stretched = this.stretched?.[i]
-      if (stretched) {
+      if (region) {
         // Ya está a otro tempo: suena a velocidad normal desde la posición equivalente
-        source.buffer = stretched
+        source.buffer = region.buffers[i]
         source.playbackRate.value = 1
         source.connect(track.output)
-        source.start(when, offset / this.rate)
+        source.start(when, (offset - region.startS) / this.rate)
       } else {
         source.buffer = track.buffer
         source.playbackRate.value = this.rate
@@ -97,17 +115,27 @@ export class StemPlayer {
       if (this.sources !== sources) return
       this.disconnect(sources)
       this.sources = []
+      // Fin del tramo estirado antes del final: sigue con las originales (cambia el
+      // tono) hasta que lleguen las pistas estiradas completas
+      if (region && region.endS < this.durationS - 0.01) {
+        this.clock.pause()
+        this.clock.seek(region.endS)
+        this.play()
+        return
+      }
       this.clock.pause()
       this.clock.seek(this.durationS)
       this.onEndedCallback?.()
     }
     this.sources = sources
+    this.playOffset = offset
     this.clock.start(when, offset, this.rate)
   }
 
   pause(): void {
     if (!this.clock.isPlaying) return
-    const position = this.clock.pause()
+    // Pausar durante la cuenta previa no retrocede: se reanuda desde donde iba a sonar
+    const position = Math.max(this.clock.pause(), this.playOffset)
     this.stopSources()
     this.clock.seek(this.clamp(position))
   }
@@ -126,13 +154,14 @@ export class StemPlayer {
 
   /**
    * Tempo sin cambio de tono (PLAN_V2 D2): `stretched` son las pistas ya estiradas
-   * a `rate` (stretchBuffers), una por pista y en orden; null = las originales con
-   * playbackRate. El reloj escala con el rate, así todo lo demás sigue en segundos
-   * de canción. Si estaba sonando, sigue desde la misma posición.
+   * a `rate` (stretchBuffers), una por pista y en orden, para un tramo de la canción
+   * o para toda; null = las originales con playbackRate. Fuera del tramo suenan las
+   * originales con playbackRate. El reloj escala con el rate, así todo lo demás
+   * sigue en segundos de canción. Si estaba sonando, sigue desde la misma posición.
    */
-  setTempo(rate: number, stretched: readonly AudioBuffer[] | null): void {
+  setTempo(rate: number, stretched: StretchedTracks | null): void {
     if (!(rate > 0)) throw new RangeError(`playbackRate inválido: ${rate}`)
-    if (stretched && stretched.length !== this.tracks.length) {
+    if (stretched && stretched.buffers.length !== this.tracks.length) {
       throw new Error('setTempo: hace falta un buffer estirado por pista')
     }
     this.restart(() => {
@@ -150,7 +179,7 @@ export class StemPlayer {
   private restart(change: () => void): void {
     const wasPlaying = this.clock.isPlaying
     if (wasPlaying) {
-      this.clock.seek(this.clamp(this.clock.pause()))
+      this.clock.seek(this.clamp(Math.max(this.clock.pause(), this.playOffset)))
       this.stopSources()
     }
     change()

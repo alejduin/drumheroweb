@@ -12,6 +12,7 @@ import { BrowserWarning } from '@/ui/components/BrowserWarning'
 import { MidiConnectionToast } from '@/ui/components/MidiConnectionToast'
 import { CalibrationScreen } from '@/ui/screens/CalibrationScreen'
 import { GameScreen } from '@/ui/screens/GameScreen'
+import type { PracticeRequest } from '@/ui/screens/GameScreen'
 import { HomeScreen } from '@/ui/screens/HomeScreen'
 import { ResultsScreen } from '@/ui/screens/ResultsScreen'
 import { SettingsScreen } from '@/ui/screens/SettingsScreen'
@@ -40,6 +41,8 @@ export default function App() {
   const [bundle, setBundle] = useState<SongBundle | null>(null)
   const [songRef, setSongRef] = useState<SongRef | null>(null)
   const [startAtS, setStartAtS] = useState(0)
+  // Resultados → "Practicar compases…": la partida abre con ese loop y tempo
+  const [practice, setPractice] = useState<PracticeRequest | null>(null)
   const [results, setResults] = useState<ScoreResults | null>(null)
   const [playedAt, setPlayedAt] = useState(0)
   // A dónde vuelve Ajustes
@@ -108,6 +111,7 @@ export default function App() {
     setBundle(b)
     setSongRef(ref)
     setStartAtS(startAt)
+    setPractice(null)
     setScreen('game')
   }
 
@@ -182,6 +186,7 @@ export default function App() {
           bundle={bundle}
           songRef={songRef}
           startAtS={startAtS}
+          practice={practice}
           onExit={() => setScreen('library')}
           onFinished={handleFinished}
           onRecalibrate={() => openCalibration('game')}
@@ -195,6 +200,12 @@ export default function App() {
           playedAt={playedAt}
           onRetry={() => {
             setStartAtS(0)
+            setPractice(null)
+            setScreen('game')
+          }}
+          onPractice={request => {
+            setStartAtS(0)
+            setPractice(request)
             setScreen('game')
           }}
           onMenu={() => setScreen('library')}

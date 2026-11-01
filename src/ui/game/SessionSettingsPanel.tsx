@@ -4,6 +4,8 @@ import type { MixChannel, MixLevels, MixPreset } from '@/audio/Mixer'
 import { DIFFICULTIES } from '@/types'
 import type { Difficulty } from '@/types'
 import type { AudioMode } from '@/game/GameSession'
+import { lapText } from '@/game/practice'
+import type { LapResult, PracticeLoop } from '@/game/practice'
 import { formatSignedMs } from '@/game/format'
 import { DIFFICULTY_LABELS } from '@/game/songMeta'
 import { Button, Checkbox, Panel, SectionLabel, SegmentedControl, Slider } from '@/ui/primitives'
@@ -35,6 +37,11 @@ interface SessionSettingsPanelProps {
   /** Por qué no se pudo aplicar el último tempo, si falló. */
   tempoError: string | null
   onTempoChange: (tempo: number) => void
+  tempoRamp: boolean
+  onTempoRampChange: (on: boolean) => void
+  /** Loop activo (la rampa solo actúa con loop). */
+  loop: PracticeLoop | null
+  lastLap: LapResult | null
   mix: Readonly<MixLevels>
   audioMode: AudioMode
   onMixChange: (channel: MixChannel, level: number) => void
@@ -53,6 +60,10 @@ export function SessionSettingsPanel({
   tempoPending,
   tempoError,
   onTempoChange,
+  tempoRamp,
+  onTempoRampChange,
+  loop,
+  lastLap,
   mix,
   audioMode,
   onMixChange,
@@ -110,8 +121,13 @@ export function SessionSettingsPanel({
             ? `Preparando el audio al ${tempoPct} %…`
             : (tempoError ?? 'Más lento sin cambiar el tono · las ventanas siguen en tiempo real')}
         </span>
-        <span title={PHASE_D}>
-          <Checkbox label="Rampa +5% al lograr 90%" checked={false} onChange={() => {}} disabled />
+        <Checkbox
+          label="Rampa +5% al lograr 90%"
+          checked={tempoRamp}
+          onChange={onTempoRampChange}
+        />
+        <span className="text-[11px] text-muted" aria-live="polite">
+          {lapText(loop, lastLap, tempoRamp)}
         </span>
       </div>
 
@@ -161,7 +177,9 @@ export function SessionSettingsPanel({
       </div>
 
       <div className="flex flex-col gap-2.5 border-t border-border pt-3.5">
-        <Checkbox label="Modo espera" checked={false} onChange={() => {}} disabled />
+        <span title={PHASE_D}>
+          <Checkbox label="Modo espera" checked={false} onChange={() => {}} disabled />
+        </span>
         <Checkbox
           label="Puntos por dinámica"
           checked={dynamicsBonus}

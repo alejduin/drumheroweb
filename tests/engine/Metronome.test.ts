@@ -149,3 +149,41 @@ describe('Metronome', () => {
     expect(metronome.pendingClicks).toBe(0)
   })
 })
+
+describe('Metronome — cuenta previa (D3)', () => {
+  it('agenda los clicks de la cuenta antes del arranque y el tick no los cancela', () => {
+    const { ctx, player, metronome, live } = setup()
+    const countOut = { name: 'count-in' } as unknown as AudioNode
+    const m = new Metronome({
+      ctx,
+      clock: player.clock,
+      grid,
+      output: { name: 'metronome' } as unknown as AudioNode,
+      countInOutput: countOut,
+      scheduler: { request: () => 1, cancel: () => {} },
+    })
+    metronome.dispose()
+    player.seek(2.25)
+    player.play(2) // un compás de cuenta (2 s) antes de 2,25
+    m.countIn([
+      { t: 0.25, accent: true },
+      { t: 0.75, accent: false },
+      { t: 1.25, accent: false },
+      { t: 1.75, accent: false },
+    ])
+    m.tick()
+    const starts = live().map(o => o.startAt!)
+    ;[0, 0.5, 1, 1.5].forEach((x, i) => expect(starts[i]).toBeCloseTo(x + START_LEAD_S, 9))
+    expect(live()[0].frequency.value).toBe(ACCENT_FREQUENCY_HZ)
+    expect(live()[1].frequency.value).toBe(BEAT_FREQUENCY_HZ)
+    // La cuenta sale por su propia salida; después sigue el metrónomo normal
+    expect(ctx.gains.filter(g => g.output === countOut)).toHaveLength(4)
+    // Al llegar al arranque, el beat 2,25 lo agenda el metrónomo normal
+    ctx.currentTime = 2
+    m.tick()
+    const regular = live().filter(o => o.startAt! > 1.6)
+    expect(regular).toHaveLength(1)
+    expect(regular[0].startAt).toBeCloseTo(2 + START_LEAD_S, 9)
+    expect(ctx.gains.filter(g => g.output === countOut)).toHaveLength(4)
+  })
+})

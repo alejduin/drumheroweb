@@ -58,9 +58,23 @@ export const stretchInWorker: StretchFn = (channels, sampleRate, rate, signal) =
     )
   })
 
+/** Tramo de la canción en segundos; null = entera. */
+export interface StretchRegion {
+  startS: number
+  endS: number
+}
+
+/** Las pistas estiradas y el tramo exacto (en segundos de canción) que cubren. */
+export interface StretchedAudio {
+  buffers: AudioBuffer[]
+  startS: number
+  endS: number
+}
+
 /**
  * Las pistas de la canción a `rate`, estiradas juntas (misma alineación en todas,
  * así siguen sincronizadas entre sí). Devuelve un buffer por pista, en orden.
+ * Con `region` solo se estira ese tramo (un loop: rápido y con poca memoria).
  */
 export async function stretchBuffers(
   ctx: StretchBufferContext,
@@ -68,30 +82,42 @@ export async function stretchBuffers(
   rate: number,
   stretch: StretchFn,
   signal?: AbortSignal,
-): Promise<AudioBuffer[]> {
-  if (buffers.length === 0) return []
+  region: StretchRegion | null = null,
+): Promise<StretchedAudio> {
+  if (buffers.length === 0) return { buffers: [], startS: 0, endS: 0 }
   const { sampleRate } = buffers[0]
   if (buffers.some(b => b.sampleRate !== sampleRate)) {
     throw new Error('stretchBuffers: las pistas deben tener la misma frecuencia de muestreo')
   }
   // Todas al largo de la más larga (una pista corta se rellena con silencio)
-  const length = Math.max(...buffers.map(b => b.length))
+  const total = Math.max(...buffers.map(b => b.length))
+  const from = region ? Math.min(Math.max(Math.floor(region.startS * sampleRate), 0), total) : 0
+  const to = region
+    ? Math.min(Math.max(Math.ceil(region.endS * sampleRate), from + 1), total)
+    : total
   const channels: Float32Array[] = []
   for (const buffer of buffers) {
     for (let c = 0; c < buffer.numberOfChannels; c++) {
-      const data = new Float32Array(length)
-      data.set(buffer.getChannelData(c))
+      const data = new Float32Array(to - from)
+      const source = buffer.getChannelData(c)
+      data.set(source.subarray(Math.min(from, source.length), Math.min(to, source.length)))
       channels.push(data)
     }
   }
   const out = await stretch(channels, sampleRate, rate, signal)
   if (signal?.aborted) throw abortError()
   let next = 0
-  return buffers.map(buffer => {
-    const stretched = ctx.createBuffer(buffer.numberOfChannels, out[0].length, sampleRate)
+  const stretched = buffers.map(buffer => {
+    const b = ctx.createBuffer(buffer.numberOfChannels, out[0].length, sampleRate)
     for (let c = 0; c < buffer.numberOfChannels; c++) {
-      stretched.getChannelData(c).set(out[next++])
+      b.getChannelData(c).set(out[next++])
     }
-    return stretched
+    return b
   })
+  return {
+    buffers: stretched,
+    startS: from / sampleRate,
+    // La pista entera llega hasta el final aunque el último sample redondee
+    endS: to === total ? Infinity : to / sampleRate,
+  }
 }

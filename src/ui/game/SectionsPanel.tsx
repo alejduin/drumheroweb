@@ -5,6 +5,7 @@ import type { SongClock } from '@/audio/AudioClock'
 import { measureAt } from '@/chart/grid'
 import { formatPercent } from '@/game/format'
 import { practiceSuggestion, sectionIndexAt } from '@/game/sections'
+import type { PracticeSuggestion } from '@/game/sections'
 import { useAnimationFrame } from '@/hooks/useAnimationFrame'
 import { selectSections, useGameStore } from '@/store/gameStore'
 import { Button, Panel, cn } from '@/ui/primitives'
@@ -16,6 +17,8 @@ interface SectionsPanelProps {
   grid: ChartGrid
   clock: SongClock
   onSeekSection: (section: ChartSection) => void
+  /** Loop sobre la sección más floja al tempo sugerido. */
+  onPractice: (suggestion: PracticeSuggestion) => void
   /** Si el video está oculto, el panel ofrece volver a mostrarlo. */
   onShowVideo?: () => void
 }
@@ -26,6 +29,7 @@ export function SectionsPanel({
   grid,
   clock,
   onSeekSection,
+  onPractice,
   onShowVideo,
 }: SectionsPanelProps) {
   const stats = useGameStore(selectSections)
@@ -98,8 +102,13 @@ export function SectionsPanel({
       <Button
         variant="primary"
         fullWidth
-        disabled
-        title="La práctica por compases llega en la Fase D"
+        disabled={!suggestion}
+        title={
+          suggestion
+            ? 'Loop sobre la sección más floja; desde ahí puedes activar la rampa'
+            : 'Toca un poco: se sugiere la sección con menos precisión'
+        }
+        onClick={() => suggestion && onPractice(suggestion)}
       >
         {suggestion
           ? `Practicar compases ${suggestion.startMeasure}–${suggestion.endMeasure} al ${Math.round(suggestion.tempo * 100)}%`

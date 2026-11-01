@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ChartSection, Difficulty } from '@/types'
 import type { MixChannel } from '@/audio/Mixer'
 import type { GameSession, SessionOptions, SongBundle } from '@/game/GameSession'
 import { sessionSnapshot } from '@/game/lastSession'
 import type { SongRef } from '@/game/lastSession'
 import { sectionStartS } from '@/game/sections'
+import type { PracticeSuggestion } from '@/game/sections'
+import type { PracticeLoop } from '@/game/practice'
 import { useGameSession } from '@/hooks/useGameSession'
 import type { ScoreResults } from '@/scoring/ScoreManager'
 import { selectPhase, useGameStore } from '@/store/gameStore'
@@ -27,14 +29,24 @@ interface GameScreenProps {
   songRef: SongRef | null
   /** Segundo en el que empieza la partida (Continuar retoma la sección guardada). */
   startAtS?: number
+  /** Abre con este loop y tempo (Resultados → "Practicar compases…"). */
+  practice?: PracticeRequest | null
   onExit: () => void
   onFinished: (results: ScoreResults) => void
   onRecalibrate: () => void
 }
 
+/** Loop y tempo con que abrir la partida ("Practicar compases…" en Resultados). */
+export interface PracticeRequest {
+  loop: PracticeLoop
+  tempo: number
+}
+
 function readOptions(): SessionOptions {
   const s = useSettingsStore.getState()
   return {
+    countIn: s.countIn,
+    tempoRamp: s.tempoRamp,
     difficulty: s.difficulty,
     level: s.level,
     latencyMs: s.midiLatencyOffsetMs,
@@ -48,6 +60,7 @@ export function GameScreen({
   bundle,
   songRef,
   startAtS = 0,
+  practice = null,
   onExit,
   onFinished,
   onRecalibrate,
@@ -60,6 +73,7 @@ export function GameScreen({
         session={state.session}
         songRef={songRef}
         startAtS={startAtS}
+        practiceRequest={practice}
         onExit={onExit}
         onFinished={onFinished}
         onRecalibrate={onRecalibrate}
@@ -90,6 +104,7 @@ interface GameLayoutProps {
   session: GameSession
   songRef: SongRef | null
   startAtS: number
+  practiceRequest: PracticeRequest | null
   onExit: () => void
   onFinished: (results: ScoreResults) => void
   onRecalibrate: () => void
@@ -99,6 +114,7 @@ function GameLayout({
   session,
   songRef,
   startAtS,
+  practiceRequest,
   onExit,
   onFinished,
   onRecalibrate,
@@ -170,38 +186,31 @@ function GameLayout({
     setDifficultyState(value)
     setSavedDifficulty(value)
   }
-  // Tempo (D2): el audio se estira en un worker; mientras, suena al tempo anterior
-  const [tempo, setTempoState] = useState(() => useSettingsStore.getState().tempo)
-  // Al abrir con un tempo guardado distinto de 100 %, ya empieza preparándose
-  const [tempoPending, setTempoPending] = useState(
-    () => useSettingsStore.getState().tempo !== session.tempo,
-  )
-  const [tempoError, setTempoError] = useState<string | null>(null)
+  // Tempo, loop, cuenta y rampa (D2–D3): el estado vive en la sesión (la rampa
+  // cambia el tempo sola); aquí solo el valor del deslizador mientras se arrastra
+  const practice = useSyncExternalStore(session.subscribePractice, () => session.practice)
+  const [tempoDraft, setTempoDraft] = useState<number | null>(null)
   const setSavedTempo = useSettingsStore(s => s.setTempo)
+  const setSavedCountIn = useSettingsStore(s => s.setCountIn)
+  const setSavedRamp = useSettingsStore(s => s.setTempoRamp)
   const tempoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // El error ya queda en practice.tempoError
   const runTempo = useCallback(
     (value: number) => {
-      session.setTempo(value).then(
-        applied => {
-          // false = lo reemplazó un cambio posterior, que apagará el aviso
-          if (applied) setTempoPending(false)
-        },
-        (error: unknown) => {
-          setTempoPending(false)
-          setTempoState(session.tempo)
-          setTempoError(
-            `No se pudo cambiar el tempo: ${error instanceof Error ? error.message : String(error)}`,
-          )
-        },
-      )
+      session.setTempo(value).catch(() => {})
     },
     [session],
   )
-  // Al abrir, el último tempo elegido
+  // Al abrir: el loop de práctica pedido (Resultados) o el último tempo elegido
   useEffect(() => {
+    if (practiceRequest) {
+      session.setLoop(practiceRequest.loop)
+      runTempo(practiceRequest.tempo)
+      return
+    }
     const saved = useSettingsStore.getState().tempo
     if (saved !== session.tempo) runTempo(saved)
-  }, [session, runTempo])
+  }, [session, runTempo, practiceRequest])
   useEffect(
     () => () => {
       if (tempoTimer.current) clearTimeout(tempoTimer.current)
@@ -209,13 +218,32 @@ function GameLayout({
     [],
   )
   const changeTempo = (value: number) => {
-    setTempoState(value)
+    setTempoDraft(value)
     setSavedTempo(value)
     if (tempoTimer.current) clearTimeout(tempoTimer.current)
-    setTempoPending(true)
-    setTempoError(null)
-    tempoTimer.current = setTimeout(() => runTempo(value), TEMPO_DEBOUNCE_MS)
+    tempoTimer.current = setTimeout(() => {
+      setTempoDraft(null)
+      runTempo(value)
+    }, TEMPO_DEBOUNCE_MS)
   }
+  const tempo = tempoDraft ?? practice.tempo
+  const changeCountIn = (on: boolean) => {
+    setSavedCountIn(on)
+    session.setCountIn(on)
+  }
+  const changeRamp = (on: boolean) => {
+    setSavedRamp(on)
+    session.setTempoRamp(on)
+  }
+  const changeLoop = useCallback((loop: PracticeLoop | null) => session.setLoop(loop), [session])
+  const practiceSuggestion = useCallback(
+    (suggestion: PracticeSuggestion) => {
+      session.setLoop({ startMeasure: suggestion.startMeasure, endMeasure: suggestion.endMeasure })
+      setSavedTempo(suggestion.tempo)
+      runTempo(suggestion.tempo)
+    },
+    [session, runTempo, setSavedTempo],
+  )
 
   const changeDynamics = (on: boolean) => {
     setDynamicsBonus(on)
@@ -281,6 +309,7 @@ function GameLayout({
               grid={chart.grid}
               clock={session.clock}
               onSeekSection={seekSection}
+              onPractice={practiceSuggestion}
               onShowVideo={videoVisible ? undefined : () => setVideoVisible(true)}
             />
           </div>
@@ -295,6 +324,11 @@ function GameLayout({
             grid={chart.grid}
             onToggle={toggle}
             onSeek={seek}
+            loop={practice.loop}
+            onLoopChange={changeLoop}
+            tempo={tempo}
+            countIn={practice.countIn}
+            onCountInChange={changeCountIn}
           />
         </div>
         <SessionSettingsPanel
@@ -306,9 +340,13 @@ function GameLayout({
           }}
           onDifficultyChange={changeDifficulty}
           tempo={tempo}
-          tempoPending={tempoPending}
-          tempoError={tempoError}
+          tempoPending={tempoDraft !== null || practice.tempoPending}
+          tempoError={practice.tempoError}
           onTempoChange={changeTempo}
+          tempoRamp={practice.tempoRamp}
+          onTempoRampChange={changeRamp}
+          loop={practice.loop}
+          lastLap={practice.lastLap}
           mix={mix}
           audioMode={session.audioMode}
           onMixChange={changeMix}

@@ -2,14 +2,14 @@ import { useCallback, useMemo, useRef } from 'react'
 import type { ChartGrid, ChartSection, WaveformPeaks } from '@/types'
 import type { SongClock } from '@/audio/AudioClock'
 import { formatClockMs } from '@/game/format'
+import { loopAt, loopFromSelection, loopRange } from '@/game/practice'
+import type { PracticeLoop } from '@/game/practice'
 import { rulerLabel, sectionSpans } from '@/game/sections'
 import { useAnimationFrame } from '@/hooks/useAnimationFrame'
-import { Button, IconButton } from '@/ui/primitives'
+import { Button, Chip, IconButton } from '@/ui/primitives'
 import { SectionRuler } from './SectionRuler'
 import { Waveform } from './Waveform'
 import { PauseIcon, PlayIcon } from './icons'
-
-const PHASE_D = 'Llega en la Fase D'
 
 interface TransportBarProps {
   clock: SongClock
@@ -23,9 +23,18 @@ interface TransportBarProps {
   grid: ChartGrid
   onToggle: () => void
   onSeek: (songTime: number) => void
+  /** Loop A–B por compases (D3). */
+  loop: PracticeLoop | null
+  onLoopChange: (loop: PracticeLoop | null) => void
+  tempo: number
+  countIn: boolean
+  onCountInChange: (on: boolean) => void
 }
 
-/** Transporte: play/pausa, reloj maestro con milisegundos, forma de onda y secciones. */
+/**
+ * Transporte: play/pausa, reloj maestro con milisegundos, forma de onda y secciones.
+ * Loop A–B (arrastrar sobre la onda o el botón), tempo y cuenta de un compás.
+ */
 export function TransportBar({
   clock,
   durationS,
@@ -37,6 +46,11 @@ export function TransportBar({
   grid,
   onToggle,
   onSeek,
+  loop,
+  onLoopChange,
+  tempo,
+  countIn,
+  onCountInChange,
 }: TransportBarProps) {
   const timeRef = useRef<HTMLSpanElement>(null)
   const total = formatClockMs(durationS)
@@ -46,6 +60,15 @@ export function TransportBar({
     }
   }, [clock, durationS, total])
   useAnimationFrame(paint)
+
+  const loopSeconds = useMemo(
+    () => (loop ? loopRange(grid, durationS, loop) : null),
+    [loop, grid, durationS],
+  )
+  const selectLoop = useCallback(
+    (fromS: number, toS: number) => onLoopChange(loopFromSelection(grid, fromS, toS)),
+    [grid, onLoopChange],
+  )
 
   const spans = useMemo(
     () => sectionSpans(sections, grid, durationS, s => rulerLabel(s, autoSections)),
@@ -71,17 +94,40 @@ export function TransportBar({
           </span>
         </div>
         <div className="flex-1" />
-        <Button size="sm" disabled title={PHASE_D}>
-          Loop A–B
+        <Button
+          size="sm"
+          variant={loop ? 'primary' : 'secondary'}
+          aria-pressed={loop !== null}
+          title={
+            loop
+              ? 'Quitar el loop'
+              : 'Loop de 4 compases desde aquí; también puedes arrastrar sobre la onda'
+          }
+          onClick={() => onLoopChange(loop ? null : loopAt(grid, clock.now()))}
+        >
+          {loop
+            ? `Loop ${loop.startMeasure === loop.endMeasure ? loop.startMeasure : `${loop.startMeasure}–${loop.endMeasure}`} ✕`
+            : 'Loop A–B'}
         </Button>
-        <Button size="sm" disabled title={PHASE_D}>
-          Tempo 100%
-        </Button>
-        <Button size="sm" disabled title={PHASE_D}>
+        <Chip tone={tempo < 1 ? 'strong' : 'muted'}>Tempo {Math.round(tempo * 100)}%</Chip>
+        <Button
+          size="sm"
+          variant={countIn ? 'primary' : 'secondary'}
+          aria-pressed={countIn}
+          title="Un compás de metrónomo antes de que suene la canción al empezar o reanudar"
+          onClick={() => onCountInChange(!countIn)}
+        >
           Cuenta 1 compás
         </Button>
       </div>
-      <Waveform peaks={peaks} clock={clock} durationS={durationS} onSeek={onSeek} />
+      <Waveform
+        peaks={peaks}
+        clock={clock}
+        durationS={durationS}
+        onSeek={onSeek}
+        loop={loopSeconds}
+        onSelect={selectLoop}
+      />
       <SectionRuler spans={spans} />
     </div>
   )

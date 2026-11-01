@@ -55,6 +55,12 @@ export function beatsInWindow(grid: ChartGrid, from: number, to: number): Metron
   return result
 }
 
+/** Click de la cuenta previa (D3): segundos de canción, antes de que suene el audio. */
+export interface CountInClick {
+  t: number
+  accent: boolean
+}
+
 /** Subconjunto de AudioContext que usa el metrónomo (fake en tests). */
 export interface MetronomeContext {
   readonly currentTime: number
@@ -71,6 +77,8 @@ export interface MetronomeDeps {
   grid: ChartGrid
   /** Canal "metronome" del Mixer: el volumen se controla ahí. */
   output: AudioNode
+  /** Salida de la cuenta: suena aunque el canal del metrónomo esté en 0. */
+  countInOutput?: AudioNode
   scheduler?: FrameScheduler
 }
 
@@ -91,6 +99,7 @@ export class Metronome {
   private readonly clock: MetronomeClock
   private readonly grid: ChartGrid
   private readonly output: AudioNode
+  private readonly countInOutput: AudioNode
   private readonly scheduler: FrameScheduler
 
   private epoch = -1
@@ -99,11 +108,19 @@ export class Metronome {
   private scheduled: ScheduledClick[] = []
   private frameId: number | null = null
 
-  constructor({ ctx, clock, grid, output, scheduler = rafScheduler }: MetronomeDeps) {
+  constructor({
+    ctx,
+    clock,
+    grid,
+    output,
+    countInOutput,
+    scheduler = rafScheduler,
+  }: MetronomeDeps) {
     this.ctx = ctx
     this.clock = clock
     this.grid = grid
     this.output = output
+    this.countInOutput = countInOutput ?? output
     this.scheduler = scheduler
   }
 
@@ -126,6 +143,22 @@ export class Metronome {
   /** Clicks agendados todavía pendientes de sonar (tests y depuración). */
   get pendingClicks(): number {
     return this.scheduled.length
+  }
+
+  /**
+   * Agenda la cuenta previa. Llamar justo después de arrancar el audio con la
+   * cuenta de margen: los clicks caen antes del arranque, en el mismo reloj.
+   */
+  countIn(clicks: readonly CountInClick[]): void {
+    const now = this.ctx.currentTime
+    // Toma el reanclado del play como propio: el tick no debe cancelar la cuenta
+    this.epoch = this.clock.epoch
+    this.cancelScheduled()
+    this.cursor = this.clock.songAtCtx(now)
+    for (const c of clicks) {
+      const when = this.clock.songToCtx(c.t)
+      if (when !== null && when >= now) this.click(when, c.accent, this.countInOutput)
+    }
   }
 
   /** Un paso del scheduler. Público para tests. */
@@ -151,7 +184,7 @@ export class Metronome {
     this.cursor = until
   }
 
-  private click(when: number, accent: boolean): void {
+  private click(when: number, accent: boolean, output: AudioNode = this.output): void {
     const osc = this.ctx.createOscillator()
     const gain = this.ctx.createGain()
     osc.frequency.value = accent ? ACCENT_FREQUENCY_HZ : BEAT_FREQUENCY_HZ
@@ -159,7 +192,7 @@ export class Metronome {
     gain.gain.setValueAtTime(accent ? ACCENT_GAIN : BEAT_GAIN, when)
     gain.gain.exponentialRampToValueAtTime(0.001, end)
     osc.connect(gain)
-    gain.connect(this.output)
+    gain.connect(output)
     osc.start(when)
     osc.stop(end)
     osc.onended = () => {

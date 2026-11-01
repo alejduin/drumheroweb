@@ -21,6 +21,9 @@ function setup(durations: number[] = [60]) {
   return { ctx, player, advance }
 }
 
+/** Pistas estiradas de la canción entera. */
+const whole = (buffers: AudioBuffer[]) => ({ buffers, startS: 0, endS: Infinity })
+
 describe('StemPlayer', () => {
   it('arranca todos los stems en el mismo instante y offset, cada uno a su salida', () => {
     const { ctx, player } = setup([60, 60])
@@ -112,7 +115,7 @@ describe('StemPlayer', () => {
     player.play()
     advance(START_LEAD_S + 4)
     const stretched = [fakeBuffer(80), fakeBuffer(80)]
-    player.setTempo(0.75, stretched)
+    player.setTempo(0.75, whole(stretched))
     expect(player.playbackRate).toBe(0.75)
     const [drums, backing] = ctx.sources.slice(-2)
     expect(drums.buffer).toBe(stretched[0])
@@ -128,7 +131,7 @@ describe('StemPlayer', () => {
 
   it('setTempo(1) vuelve a las pistas originales', () => {
     const { ctx, player, advance } = setup([60])
-    player.setTempo(0.5, [fakeBuffer(120)])
+    player.setTempo(0.5, whole([fakeBuffer(120)]))
     player.play()
     advance(START_LEAD_S + 2)
     player.setTempo(1, null)
@@ -137,9 +140,38 @@ describe('StemPlayer', () => {
     expect(ctx.lastSource.startArgs?.[1]).toBeCloseTo(1, 9)
   })
 
+  it('con un tramo estirado, fuera de él suenan las originales y al acabarlo sigue con ellas', () => {
+    const { ctx, player, advance } = setup([60])
+    // Tramo 10–20 s estirado al 50 %: 20 s de audio
+    player.setTempo(0.5, { buffers: [fakeBuffer(20)], startS: 10, endS: 20 })
+    player.seek(12)
+    player.play()
+    expect(ctx.lastSource.buffer?.duration).toBe(20)
+    expect(ctx.lastSource.startArgs?.[1]).toBeCloseTo(4, 9) // (12 − 10) / 0,5
+    // Al terminar el tramo sigue desde 20 s con la original (cambia el tono)
+    advance(START_LEAD_S + 16)
+    ctx.lastSource.finish()
+    expect(player.isPlaying).toBe(true)
+    expect(ctx.lastSource.buffer?.duration).toBe(60)
+    expect(ctx.lastSource.playbackRate.value).toBe(0.5)
+    expect(ctx.lastSource.startArgs?.[1]).toBeCloseTo(20, 9)
+  })
+
+  it('play con cuenta previa retrasa el audio y el reloj corre antes del arranque', () => {
+    const { ctx, player, advance } = setup([60])
+    player.seek(10)
+    player.play(2) // 2 s de canción de cuenta a rate 1
+    expect(ctx.lastSource.startArgs).toEqual([START_LEAD_S + 2, 10])
+    advance(START_LEAD_S + 1)
+    expect(player.clock.now()).toBeCloseTo(9, 9)
+    // Pausar durante la cuenta no retrocede: se reanuda en 10
+    player.pause()
+    expect(player.clock.now()).toBe(10)
+  })
+
   it('setTempo exige un buffer estirado por pista', () => {
     const { player } = setup([60, 60])
-    expect(() => player.setTempo(0.5, [fakeBuffer(120)])).toThrow()
+    expect(() => player.setTempo(0.5, whole([fakeBuffer(120)]))).toThrow()
     expect(() => player.setTempo(-1, null)).toThrow(RangeError)
   })
 

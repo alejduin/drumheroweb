@@ -6,7 +6,7 @@ import type { PlayerContext, StemPlayer } from '@/audio/StemPlayer'
 import { loadSongAudio } from '@/audio/loadSongAudio'
 import { createKitBuffers } from '@/audio/drumSynth'
 import { stretchBuffers, stretchInWorker } from '@/audio/tempo'
-import type { StretchBufferContext, StretchFn } from '@/audio/tempo'
+import type { StretchBufferContext, StretchFn, StretchRegion } from '@/audio/tempo'
 import { normalizeTempo } from '@/audio/timeStretch'
 import type { KitBufferContext } from '@/audio/drumSynth'
 import type { DecodeContext, SongAudio, SongAudioSources } from '@/audio/loadSongAudio'
@@ -18,7 +18,19 @@ import type { MetronomeContext } from '@/engine/Metronome'
 import { ScoreManager } from '@/scoring/ScoreManager'
 import { bindScoring, useGameStore } from '@/store/gameStore'
 import { ensureDifficulties } from '@/chart/difficulties'
+import {
+  clampLoop,
+  countInClicks,
+  countInLengthS,
+  lapPrecision,
+  loopRange,
+  nextRampTempo,
+} from './practice'
+import type { LapResult, PracticeLoop } from './practice'
+import type { LoopLap, LoopRange } from '@/engine/GameEngine'
 import { effectiveSections } from './sections'
+
+export type { LapResult } from './practice'
 import { computePeaks } from './waveform'
 
 /** Frecuencia de la pista silenciosa de los charts sin audio (mínimo que acepta createBuffer). */
@@ -41,7 +53,28 @@ export interface SessionOptions {
   latencyMs: number
   dynamicsBonus: boolean
   mix: Readonly<MixLevels>
+  /** Cuenta de un compás al empezar o reanudar (D3). */
+  countIn?: boolean
+  /** Rampa de tempo: +5 % al lograr ≥ 90 % en una vuelta del loop (D3). */
+  tempoRamp?: boolean
 }
+
+/** Estado de práctica para la UI: cambia por acción del usuario o por la rampa. */
+export interface PracticeState {
+  /** Tempo pedido (0,5–1). */
+  tempo: number
+  /** Las pistas se están estirando al tempo pedido (mientras, suena el anterior). */
+  tempoPending: boolean
+  tempoError: string | null
+  loop: PracticeLoop | null
+  countIn: boolean
+  tempoRamp: boolean
+  lastLap: LapResult | null
+}
+
+// Margen alrededor del loop al estirar solo ese tramo
+const REGION_MARGIN_BEFORE_S = 0.5
+const REGION_MARGIN_AFTER_S = 1
 
 /** Subconjunto de AudioContext que usa la sesión (fake en tests). */
 export interface SessionContext
@@ -101,6 +134,16 @@ export class GameSession {
   private readonly stretch: StretchFn
   private targetTempo = 1
   private tempoJob: AbortController | null = null
+  private tempoError: string | null = null
+  /** Tramo estirado que tiene el reproductor; null = la canción entera (o nada). */
+  private stretchedRegion: StretchRegion | null = null
+  private loop: PracticeLoop | null = null
+  private loopSeconds: LoopRange | null = null
+  private countIn: boolean
+  private tempoRamp: boolean
+  private lastLap: LapResult | null = null
+  private practiceSnapshot: PracticeState
+  private readonly practiceListeners = new Set<() => void>()
 
   private constructor(
     ctx: SessionContext,
@@ -110,6 +153,8 @@ export class GameSession {
     deps: SessionDeps,
   ) {
     this.ctx = ctx
+    this.countIn = options.countIn ?? false
+    this.tempoRamp = options.tempoRamp ?? false
     // El worker solo emite `full`: Básico e Intermedio se generan aquí si faltan
     this.chart = ensureDifficulties(bundle.chart)
     this.options = options
@@ -138,6 +183,8 @@ export class GameSession {
     this.unsubs = [deps.subscribeHits(hit => this.engine.handleHit(hit))]
     // Si el audio acaba antes que el chart, el engine no llegaría a durationS
     this.player.onEnded(() => this.engine.finish())
+    // Cada vuelta del loop: precisión y rampa de tempo
+    this.engine.onLoop(lap => this.handleLap(lap))
 
     // Clicks en el canal "metronome" del mezclador; se realinea solo al pausar o hacer seek
     this.metronome = new Metronome({
@@ -145,6 +192,8 @@ export class GameSession {
       clock: this.player.clock,
       grid: this.chart.grid,
       output: this.mixer.input('metronome'),
+      // La cuenta se oye aunque el metrónomo esté en 0
+      countInOutput: ctx.destination,
       scheduler: deps.scheduler,
     })
     this.metronome.start()
@@ -159,6 +208,7 @@ export class GameSession {
       scheduler: deps.scheduler,
     })
     this.kit.start()
+    this.practiceSnapshot = this.buildPractice()
   }
 
   /** Decodifica el audio y prepara la partida (en pausa, en 0). */
@@ -205,6 +255,8 @@ export class GameSession {
     this.unbindScoring()
     this.unbindScoring = this.loadNotes(difficulty)
     this.kit.setNotes(this.engine.chartNotes)
+    // engine.load quita el loop: se vuelve a poner
+    this.engine.setLoop(this.loopSeconds)
     this.seek(position)
   }
 
@@ -215,44 +267,160 @@ export class GameSession {
 
   /**
    * Cambia el tempo sin cambiar el tono (PLAN_V2 D2). Las pistas se estiran en un
-   * worker (unos segundos) y, al terminar, la canción sigue desde la misma posición
-   * al nuevo tempo; mientras tanto suena como antes. Un cambio nuevo cancela el que
-   * estaba en curso. Resuelve true si se aplicó, false si otro cambio lo reemplazó.
+   * worker y, al terminar, la canción sigue desde la misma posición al nuevo tempo;
+   * mientras tanto suena como antes. Con un loop activo solo se estira su tramo
+   * (rápido, para la rampa). Un cambio nuevo cancela el que estaba en curso.
+   * Resuelve true si se aplicó, false si otro cambio lo reemplazó.
    */
   async setTempo(tempo: number): Promise<boolean> {
     if (this.disposed) return false
-    const rate = normalizeTempo(tempo)
+    this.targetTempo = normalizeTempo(tempo)
+    return this.applyTempo()
+  }
+
+  // ─── Práctica (D3) ────────────────────────────────────────────────────────────
+
+  /** Estado de práctica (instantánea inmutable, para useSyncExternalStore). */
+  get practice(): PracticeState {
+    return this.practiceSnapshot
+  }
+
+  /** Avisa cada vez que cambia `practice`. */
+  subscribePractice = (listener: () => void): (() => void) => {
+    this.practiceListeners.add(listener)
+    return () => this.practiceListeners.delete(listener)
+  }
+
+  /**
+   * Loop A–B por compases; null lo quita. Si la posición queda fuera, salta al
+   * inicio del loop. Al volver a A no hay cuenta: el loop sigue sin cortes.
+   */
+  setLoop(loop: PracticeLoop | null): void {
+    if (this.disposed) return
+    const clamped = loop ? clampLoop(this.chart.grid, loop) : null
+    this.loop = clamped
+    this.loopSeconds = clamped ? loopRange(this.chart.grid, this.durationS, clamped) : null
+    this.lastLap = null
+    this.engine.setLoop(this.loopSeconds)
+    const range = this.loopSeconds
+    if (range) {
+      const now = this.clock.now()
+      if (now < range.startS || now >= range.endS) this.seek(range.startS)
+    }
+    this.emitPractice()
+    // El tramo estirado depende del loop
+    if (this.targetTempo !== 1) this.applyTempoQuietly()
+  }
+
+  setCountIn(on: boolean): void {
+    this.countIn = on
+    this.emitPractice()
+  }
+
+  setTempoRamp(on: boolean): void {
+    this.tempoRamp = on
+    this.emitPractice()
+  }
+
+  private handleLap(lap: LoopLap): void {
+    const precision = lapPrecision(lap.judgements)
+    const tempo = this.targetTempo
+    const nextTempo = this.tempoRamp ? nextRampTempo(tempo, precision) : tempo
+    this.lastLap = { lap: lap.lap, precision, tempo, nextTempo }
+    if (nextTempo !== tempo) {
+      this.targetTempo = nextTempo
+      this.applyTempoQuietly()
+    }
+    this.emitPractice()
+  }
+
+  /** Tramo a estirar: el loop con un margen, o null (la canción entera). */
+  private stretchRegionFor(): StretchRegion | null {
+    const range = this.loopSeconds
+    if (!range) return null
+    return {
+      startS: Math.max(range.startS - REGION_MARGIN_BEFORE_S, 0),
+      endS: Math.min(range.endS + REGION_MARGIN_AFTER_S, this.durationS),
+    }
+  }
+
+  /** Si lo que tiene el reproductor ya cubre `region` (null = la canción entera). */
+  private coversRegion(region: StretchRegion | null): boolean {
+    const current = this.stretchedRegion
+    if (!current) return true // la canción entera
+    if (!region) return false
+    return current.startS <= region.startS && current.endS >= region.endS
+  }
+
+  /** applyTempo desde la rampa o el loop: el error queda en `practice.tempoError`. */
+  private applyTempoQuietly(): void {
+    this.applyTempo().catch(() => {})
+  }
+
+  /** Lleva el audio al tempo pedido. */
+  private async applyTempo(): Promise<boolean> {
     this.tempoJob?.abort()
     this.tempoJob = null
-    this.targetTempo = rate
-    if (rate === this.player.playbackRate) return true
-
+    this.tempoError = null
+    const rate = this.targetTempo
+    const region = this.stretchRegionFor()
+    if (rate === this.player.playbackRate && (rate === 1 || this.coversRegion(region))) {
+      this.emitPractice()
+      return true
+    }
     // Sin música (pista silenciosa) no hay tono que conservar
     if (rate === 1 || this.audioMode === 'silent') {
       this.player.setTempo(rate, null)
+      this.stretchedRegion = null
+      this.emitPractice()
       return true
     }
     const job = new AbortController()
     this.tempoJob = job
+    this.emitPractice()
     try {
-      const buffers = await stretchBuffers(
+      const audio = await stretchBuffers(
         this.ctx,
         this.trackBuffers,
         rate,
         this.stretch,
         job.signal,
+        region,
       )
       if (job.signal.aborted || this.disposed) return false
-      this.player.setTempo(rate, buffers)
+      this.player.setTempo(rate, audio)
+      this.stretchedRegion = region
       return true
     } catch (error) {
       if (job.signal.aborted || this.disposed) return false
       // Si falla, se queda en el tempo que estaba sonando
       this.targetTempo = this.player.playbackRate
+      this.tempoError = error instanceof Error ? error.message : String(error)
       throw error
     } finally {
-      if (this.tempoJob === job) this.tempoJob = null
+      if (this.tempoJob === job) {
+        this.tempoJob = null
+        this.emitPractice()
+      }
     }
+  }
+
+  private buildPractice(): PracticeState {
+    return {
+      tempo: this.targetTempo,
+      tempoPending: this.tempoJob !== null,
+      tempoError: this.tempoError,
+      loop: this.loop,
+      countIn: this.countIn,
+      tempoRamp: this.tempoRamp,
+      lastLap: this.lastLap,
+    }
+  }
+
+  private emitPractice(): void {
+    if (this.disposed) return
+    this.practiceSnapshot = this.buildPractice()
+    this.practiceListeners.forEach(listener => listener())
   }
 
   get clock() {
@@ -272,7 +440,13 @@ export class GameSession {
     // El AudioContext nace suspendido hasta un gesto del usuario
     if (this.ctx.state === 'suspended') await this.ctx.resume()
     if (this.engine.phase === 'ended') this.player.seek(0)
-    this.player.play()
+    // Cuenta de un compás: el audio arranca después y los clicks caen en el mismo reloj
+    const at = this.clock.now()
+    const clicks = this.countIn
+      ? countInClicks(this.chart.grid, at, this.chart.timeSignature[0])
+      : []
+    this.player.play(countInLengthS(clicks, at))
+    if (clicks.length) this.metronome.countIn(clicks)
     this.engine.start()
     useGameStore.getState().setPhase('playing')
   }
@@ -296,6 +470,9 @@ export class GameSession {
   seek(songTime: number): void {
     if (this.disposed) return
     const t = Math.min(Math.max(songTime, 0), this.durationS)
+    // Ir a otro sitio fuera del loop lo quita
+    const range = this.loopSeconds
+    if (range && (t < range.startS || t >= range.endS)) this.setLoop(null)
     this.player.seek(t)
     this.engine.seek(t)
     const store = useGameStore.getState()
@@ -319,6 +496,7 @@ export class GameSession {
     if (this.disposed) return
     this.disposed = true
     this.tempoJob?.abort()
+    this.practiceListeners.clear()
     this.unsubs.forEach(unsub => unsub())
     this.unbindScoring()
     this.engine.stop()
