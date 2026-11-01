@@ -77,6 +77,51 @@ function userOf(data: { user: User | null }): AuthUser {
   return toUser(data.user)
 }
 
+/** Candado entre pestañas del alta anónima. */
+export const ANON_LOCK = 'drumhero-anonymous-sign-in'
+
+export interface AnonymousOnceDeps {
+  /** Sesión guardada en este navegador (la comparten las pestañas). */
+  session: () => Promise<AuthUser | null>
+  signIn: () => Promise<AuthUser>
+  locks?: AnonLocks | null
+  doc?: PrerenderDoc | null
+}
+
+/** Lo que se usa de navigator.locks (Web Locks). */
+export interface AnonLocks {
+  request<T>(name: string, callback: () => Promise<T>): Promise<T>
+}
+
+/** Lo que se usa de document para detectar una precarga (falta en lib.dom). */
+export interface PrerenderDoc {
+  readonly prerendering?: boolean
+  addEventListener(type: 'prerenderingchange', listener: () => void, options: { once: true }): void
+}
+
+/**
+ * Alta anónima sin duplicados: varias pestañas que abren a la vez sin sesión
+ * (o una precarga de Chrome) creaban una cuenta cada una. Una precarga espera a
+ * mostrarse; con el candado, la segunda pestaña encuentra la sesión que guardó
+ * la primera y la reutiliza.
+ */
+export async function anonymousOnce({
+  session,
+  signIn,
+  locks = typeof navigator !== 'undefined'
+    ? ((navigator.locks as AnonLocks | undefined) ?? null)
+    : null,
+  doc = typeof document !== 'undefined' ? (document as PrerenderDoc) : null,
+}: AnonymousOnceDeps): Promise<AuthUser> {
+  if (doc?.prerendering) {
+    await new Promise<void>(resolve =>
+      doc.addEventListener('prerenderingchange', () => resolve(), { once: true }),
+    )
+  }
+  const once = async () => (await session()) ?? (await signIn())
+  return locks ? locks.request(ANON_LOCK, once) : once()
+}
+
 /** Adonde vuelve el enlace del correo: esta misma página (localhost o la publicada). */
 function redirectTo() {
   return `${window.location.origin}${window.location.pathname}`
@@ -103,8 +148,14 @@ export function createAuthApi(sb: SupabaseClient): AuthApi {
       const { data } = await sb.auth.getSession()
       return { user: data.session ? toUser(data.session.user) : null, error: linkError }
     },
-    async signInAnonymously() {
-      return userOf(check(await sb.auth.signInAnonymously()))
+    signInAnonymously() {
+      return anonymousOnce({
+        session: async () => {
+          const { data } = await sb.auth.getSession()
+          return data.session ? toUser(data.session.user) : null
+        },
+        signIn: async () => userOf(check(await sb.auth.signInAnonymously())),
+      })
     },
     async requestLink(email) {
       check<unknown>(await sb.auth.updateUser({ email }, { emailRedirectTo: redirectTo() }))
