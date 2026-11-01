@@ -23,6 +23,7 @@ import { SectionsPanel } from '@/ui/game/SectionsPanel'
 import { SessionSettingsPanel } from '@/ui/game/SessionSettingsPanel'
 import { TransportBar } from '@/ui/game/TransportBar'
 import { VideoPanel } from '@/ui/game/VideoPanel'
+import { PerfOverlay } from '@/ui/game/PerfOverlay'
 import { Button } from '@/ui/primitives'
 
 // Al arrastrar el tempo se espera a que el valor se asiente antes de estirar el audio
@@ -219,6 +220,7 @@ function GameLayout({
   const setMixLevel = useSettingsStore(s => s.setMixLevel)
   const latencyMs = useSettingsStore(s => s.midiLatencyOffsetMs)
   const dynamicsBonus = useSettingsStore(s => s.dynamicsBonus)
+  const showPerf = useSettingsStore(s => s.showPerf)
   const setDynamicsBonus = useSettingsStore(s => s.setDynamicsBonus)
 
   const toggle = useCallback(() => void session.toggle(), [session])
@@ -336,6 +338,7 @@ function GameLayout({
 
   return (
     <main className="flex h-full flex-col overflow-hidden bg-bg font-sans text-fg">
+      {showPerf && <PerfOverlay />}
       <GameHeader
         chart={chart}
         difficulty={difficulty}

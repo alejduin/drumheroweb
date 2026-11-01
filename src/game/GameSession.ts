@@ -37,6 +37,7 @@ import {
 import type { LapResult, PracticeLoop } from './practice'
 import type { LoopLap, LoopRange, WaitState } from '@/engine/GameEngine'
 import type { PracticeLayer } from '@/chart/layers'
+import { perfMonitor } from '@/perf/PerfMonitor'
 import { effectiveSections } from './sections'
 
 export type { LapResult } from './practice'
@@ -201,7 +202,13 @@ export class GameSession {
       scheduler: deps.scheduler,
     })
     this.unbindScoring = this.loadNotes(options.difficulty)
-    this.unsubs = [deps.subscribeHits(hit => this.engine.handleHit(hit))]
+    this.unsubs = [
+      deps.subscribeHits(hit => {
+        this.engine.handleHit(hit)
+        // D8: evento MIDI → calificación (el timestamp es del reloj de performance)
+        perfMonitor.hit(this.perfNow() - hit.timestamp)
+      }),
+    ]
     // Si el audio acaba antes que el chart, el engine no llegaría a durationS
     this.player.onEnded(() => this.engine.finish())
     // Cada vuelta del loop: precisión y rampa de tempo

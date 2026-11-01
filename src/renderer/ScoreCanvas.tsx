@@ -3,6 +3,7 @@ import type { SongClock } from '@/audio/AudioClock'
 import { THEME_COLORS } from '@/constants/theme'
 import type { ChartGrid, ChartNote } from '@/types'
 import type { GameEngine } from '@/engine/GameEngine'
+import { perfMonitor } from '@/perf/PerfMonitor'
 import { HitEffects, drawBadge, drawGlows, drawHitLine, hitLineBounds } from './EffectsRenderer'
 import { drawLaneBackground, drawLaneLabels, drawLaneNotes } from './LaneRenderer'
 import { createLaneGeometry, laneY, lanesForNotes, layoutLanes } from './laneLayout'
@@ -95,6 +96,7 @@ export function ScoreCanvas({
       frameId = requestAnimationFrame(frame)
       const nowMs = performance.now()
       const now = clock.now()
+      perfMonitor.clock(nowMs, now, clock.playbackRate, clock.isPlaying)
       const { view: currentView, accent: accentColor } = settings.current
       const { width, height } = size
       const timeline = createTimeline(width, settings.current.scrollSpeed)
@@ -120,6 +122,7 @@ export function ScoreCanvas({
         drawLaneLabels(ctx, laneGeometry, timeline.hitX)
       }
       drawBadge(ctx, effects, timeline.hitX, scale, nowMs)
+      perfMonitor.frame(nowMs, performance.now() - nowMs)
       settings.current.onFrame?.(nowMs)
     })
 

@@ -39,6 +39,8 @@ export interface UserSettings {
   accent: AccentName
   /** Latencia calibrada por dispositivo MIDI (D8), por nombre del dispositivo. */
   latencyProfiles: Record<string, LatencyProfile>
+  /** Panel de rendimiento en la partida (D8). */
+  showPerf: boolean
 }
 
 export interface LatencyProfile {
@@ -66,6 +68,7 @@ interface SettingsStore extends UserSettings {
   setAccent(accent: AccentName): void
   /** Guarda la latencia de un dispositivo (la sincronía con el MIDI lo llama sola). */
   setLatencyProfile(device: string, latencyMs: number, at?: number): void
+  setShowPerf(on: boolean): void
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -86,6 +89,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   mix: { ...DEFAULT_MIX },
   accent: DEFAULT_ACCENT,
   latencyProfiles: {},
+  showPerf: false,
 }
 
 /** Ajustes guardados por una versión anterior → versión actual. */
@@ -134,6 +138,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set(state => ({ mix: { ...state.mix, [channel]: clampLevel(level) } })),
       setMix: mix => set({ mix: { ...mix } }),
       setAccent: accent => set({ accent }),
+      setShowPerf: on => set({ showPerf: on }),
       setLatencyProfile: (device, latencyMs, at = Date.now()) =>
         set(state => ({
           latencyProfiles: { ...state.latencyProfiles, [device]: { latencyMs, updatedAt: at } },

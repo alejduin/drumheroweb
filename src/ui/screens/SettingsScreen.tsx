@@ -10,7 +10,7 @@ import { useSettingsStore } from '@/store/settingsStore'
 import { WEEKLY_GOAL_OPTIONS, dayLabel } from '@/progress/history'
 import { latencyProfileText } from '@/calibration/latency'
 import { useMidiDeviceName } from '@/hooks/useMidiDeviceName'
-import { Button, Panel, SegmentedControl, Slider } from '@/ui/primitives'
+import { Button, Checkbox, Panel, SegmentedControl, Slider } from '@/ui/primitives'
 import { cn } from '@/ui/primitives/cn'
 
 const LEVEL_OPTIONS = (['beginner', 'intermediate', 'expert'] as const).map(value => ({
@@ -47,6 +47,8 @@ export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
     mix,
     weeklyGoalMin,
     latencyProfiles,
+    showPerf,
+    setShowPerf,
     setWeeklyGoal,
     setLatencyOffset,
     setLevel,
@@ -192,6 +194,15 @@ export function SettingsScreen({ onBack, onCalibrate }: SettingsScreenProps) {
               valueText={`${metronomePct} %`}
               onChange={v => setMixLevel('metronome', v / 100)}
             />
+          </SettingRow>
+        </Panel>
+
+        <Panel title="Diagnóstico">
+          <SettingRow
+            label="Rendimiento"
+            hint="Durante la partida muestra fps, ms por golpe y fluctuación del reloj frente a los objetivos (60 fps, < 5 ms, < 10 ms)."
+          >
+            <Checkbox label="Mostrar rendimiento" checked={showPerf} onChange={setShowPerf} />
           </SettingRow>
         </Panel>
       </div>
