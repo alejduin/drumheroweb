@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, 'src'),
       '@shared': resolve(__dirname, 'shared'),
+      '@pwa': resolve(__dirname, 'pwa'),
     },
   },
   test: {

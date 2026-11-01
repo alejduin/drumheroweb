@@ -3,6 +3,7 @@ import type { JSX, LazyExoticComponent } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { registerServiceWorker } from '@/pwa/registerServiceWorker'
 
 // Herramientas de desarrollo: solo en `npm run dev`, fuera del bundle de producción
 const DEV_ROUTES: Record<string, LazyExoticComponent<() => JSX.Element>> = import.meta.env.DEV
@@ -22,6 +23,8 @@ const DEV_ROUTES: Record<string, LazyExoticComponent<() => JSX.Element>> = impor
   : {}
 
 const DevScreen = DEV_ROUTES[window.location.pathname]
+
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,11 +1,11 @@
 {
   "name": "DrumHero",
   "short_name": "DrumHero",
-  "description": "Juego de batería estilo Guitar Hero con batería MIDI real",
+  "description": "Practica canciones con tu batería electrónica MIDI",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#030712",
-  "theme_color": "#a855f7",
+  "background_color": "#0b0c10",
+  "theme_color": "#0b0c10",
   "orientation": "landscape",
   "icons": [
     {
