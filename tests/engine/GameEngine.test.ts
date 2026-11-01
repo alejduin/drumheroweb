@@ -489,3 +489,15 @@ describe('GameEngine en modo espera (D4)', () => {
     expect(engine.waitState?.t).toBe(3)
   })
 })
+
+describe('GameEngine por capas (D5)', () => {
+  it('solo pinta y evalúa las piezas de la capa; las demás no cuentan como Fallo', () => {
+    const { engine, events, playUntil } = setup([])
+    engine.load(makeChart(groove()), 'full', { level: 'intermediate', latencyMs: 0 }, 'kick_snare')
+    engine.start()
+    expect(engine.chartNotes.every(n => n.piece === 'kick' || n.piece === 'snare')).toBe(true)
+    expect(engine.chartNotes).toHaveLength(8)
+    playUntil(DURATION_S)
+    expect(counts(events)).toMatchObject({ miss: 8, perfect: 0 })
+  })
+})

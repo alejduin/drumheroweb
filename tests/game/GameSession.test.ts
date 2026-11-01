@@ -338,6 +338,25 @@ describe('GameSession', () => {
     expect(session.practice.waitMode).toBe(false)
   })
 
+  it('setLayer carga solo las piezas de la capa en la misma posición', async () => {
+    const notes: ChartNote[] = [
+      { t: 1, piece: 'kick', velocity: 80, confidence: 1 },
+      { t: 1, piece: 'hihat_closed', velocity: 80, confidence: 1 },
+      { t: 2, piece: 'crash', velocity: 80, confidence: 1 },
+    ]
+    const { session } = await open({ chart: chart(notes) })
+    session.seek(1.5)
+    session.setLayer('kick_snare')
+    expect(session.layer).toBe('kick_snare')
+    expect(session.engine.chartNotes.map(n => n.piece)).toEqual(['kick'])
+    expect(session.clock.now()).toBeCloseTo(1.5)
+    session.setLayer('hihat')
+    expect(session.engine.chartNotes).toHaveLength(2)
+    // Cambiar de dificultad respeta la capa
+    session.setDifficulty('basic')
+    expect(session.engine.chartNotes.every(n => n.piece !== 'crash')).toBe(true)
+  })
+
   it('dispose quita la suscripción MIDI, cierra el contexto y limpia el store', async () => {
     const { ctx, session, hits } = await open()
     await session.play()

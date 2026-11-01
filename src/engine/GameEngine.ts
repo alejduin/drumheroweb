@@ -1,6 +1,8 @@
 import type { SongClock } from '@/audio/AudioClock'
 import type { ChartNote, ChartV2, Difficulty, JudgementEvent, MidiHit, Piece } from '@/types'
 import { CHORD_EPSILON_S } from '@/renderer/staffLayout'
+import { filterLayer } from '@/chart/layers'
+import type { PracticeLayer } from '@/chart/layers'
 import { HitEvaluator } from './HitEvaluator'
 import type { HitEvaluatorOptions } from './HitEvaluator'
 
@@ -100,7 +102,7 @@ export class GameEngine {
     return this.currentPhase
   }
 
-  /** Notas de la dificultad cargada (índices = noteIndex de los juicios). */
+  /** Notas de la dificultad y capa cargadas (índices = noteIndex de los juicios). */
   get chartNotes(): readonly ChartNote[] {
     return this.notes
   }
@@ -110,10 +112,16 @@ export class GameEngine {
     return this.log
   }
 
-  load(chart: ChartV2, difficulty: Difficulty, options: HitEvaluatorOptions): void {
+  load(
+    chart: ChartV2,
+    difficulty: Difficulty,
+    options: HitEvaluatorOptions,
+    layer: PracticeLayer = 'full',
+  ): void {
     this.stop()
     this.chart = chart
-    this.notes = chart.difficulties[difficulty].notes
+    // Práctica por capas (D5): solo las piezas de la capa se pintan y se evalúan
+    this.notes = filterLayer(chart.difficulties[difficulty].notes, layer)
     this.evaluator = new HitEvaluator(this.notes, options)
     this.log = []
     this.loop = null

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ChartSection, Difficulty } from '@/types'
 import type { MixChannel } from '@/audio/Mixer'
 import type { GameSession, SessionOptions, SongBundle } from '@/game/GameSession'
@@ -7,6 +7,8 @@ import type { SongRef } from '@/game/lastSession'
 import { sectionStartS } from '@/game/sections'
 import type { PracticeSuggestion } from '@/game/sections'
 import type { PracticeLoop } from '@/game/practice'
+import { PRACTICE_LAYERS, filterLayer } from '@/chart/layers'
+import type { PracticeLayer } from '@/chart/layers'
 import { useGameSession } from '@/hooks/useGameSession'
 import type { ScoreResults } from '@/scoring/ScoreManager'
 import { selectPhase, useGameStore } from '@/store/gameStore'
@@ -48,6 +50,7 @@ function readOptions(): SessionOptions {
     countIn: s.countIn,
     tempoRamp: s.tempoRamp,
     waitMode: s.waitMode,
+    layer: s.layer,
     difficulty: s.difficulty,
     level: s.level,
     latencyMs: s.midiLatencyOffsetMs,
@@ -124,6 +127,14 @@ function GameLayout({
   const phase = useGameStore(selectPhase)
   const [difficulty, setDifficultyState] = useState<Difficulty>(session.difficulty)
   const setSavedDifficulty = useSettingsStore(s => s.setDifficulty)
+  const [layer, setLayerState] = useState<PracticeLayer>(session.layer)
+  const setSavedLayer = useSettingsStore(s => s.setLayer)
+  const layerCounts = useMemo(() => {
+    const notes = chart.difficulties[difficulty].notes
+    return Object.fromEntries(
+      PRACTICE_LAYERS.map(l => [l, filterLayer(notes, l).length]),
+    ) as Record<PracticeLayer, number>
+  }, [chart, difficulty])
 
   // Continuar: la partida empieza en la sección guardada, en pausa
   useEffect(() => {
@@ -181,6 +192,11 @@ function GameLayout({
   const changeMix = (channel: MixChannel, value: number) => {
     setMixLevel(channel, value)
     session.setMixLevel(channel, value)
+  }
+  const changeLayer = (value: PracticeLayer) => {
+    session.setLayer(value)
+    setLayerState(value)
+    setSavedLayer(value)
   }
   const changeDifficulty = (value: Difficulty) => {
     session.setDifficulty(value)
@@ -285,6 +301,7 @@ function GameLayout({
         chart={chart}
         difficulty={difficulty}
         tempo={tempo}
+        layer={layer}
         clock={session.clock}
         playing={playing}
         onToggle={toggle}
@@ -345,6 +362,9 @@ function GameLayout({
             full: chart.difficulties.full.notes.length,
           }}
           onDifficultyChange={changeDifficulty}
+          layer={layer}
+          layerCounts={layerCounts}
+          onLayerChange={changeLayer}
           tempo={tempo}
           tempoPending={tempoDraft !== null || practice.tempoPending}
           tempoError={practice.tempoError}

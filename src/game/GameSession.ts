@@ -36,6 +36,7 @@ import {
 } from './practice'
 import type { LapResult, PracticeLoop } from './practice'
 import type { LoopLap, LoopRange, WaitState } from '@/engine/GameEngine'
+import type { PracticeLayer } from '@/chart/layers'
 import { effectiveSections } from './sections'
 
 export type { LapResult } from './practice'
@@ -67,6 +68,8 @@ export interface SessionOptions {
   tempoRamp?: boolean
   /** Modo espera: la partida se detiene en cada nota hasta tocarla (D4). */
   waitMode?: boolean
+  /** Capa de práctica: qué piezas se tocan (D5); por defecto el kit completo. */
+  layer?: PracticeLayer
 }
 
 /** Estado de práctica para la UI: cambia por acción del usuario o por la rampa. */
@@ -245,8 +248,8 @@ export class GameSession {
 
   /** Carga las notas de esa dificultad en el engine y les conecta un marcador nuevo. */
   private loadNotes(difficulty: Difficulty): () => void {
-    const { level, latencyMs, dynamicsBonus } = this.options
-    this.engine.load(this.chart, difficulty, { level, latencyMs, dynamicsBonus })
+    const { level, latencyMs, dynamicsBonus, layer = 'full' } = this.options
+    this.engine.load(this.chart, difficulty, { level, latencyMs, dynamicsBonus }, layer)
     const scoring = new ScoreManager({
       notes: this.engine.chartNotes,
       grid: this.chart.grid,
@@ -265,11 +268,26 @@ export class GameSession {
    */
   setDifficulty(difficulty: Difficulty): void {
     if (this.disposed || difficulty === this.options.difficulty) return
+    this.reloadNotes({ ...this.options, difficulty })
+  }
+
+  get layer(): PracticeLayer {
+    return this.options.layer ?? 'full'
+  }
+
+  /** Práctica por capas (D5): como la dificultad, reinicia el marcador en la misma posición. */
+  setLayer(layer: PracticeLayer): void {
+    if (this.disposed || layer === this.layer) return
+    this.reloadNotes({ ...this.options, layer })
+  }
+
+  /** Recarga las notas con otras opciones: pausa y sigue desde la misma posición. */
+  private reloadNotes(options: SessionOptions): void {
     const position = this.clock.now()
     this.pause()
-    this.options = { ...this.options, difficulty }
+    this.options = options
     this.unbindScoring()
-    this.unbindScoring = this.loadNotes(difficulty)
+    this.unbindScoring = this.loadNotes(options.difficulty)
     this.kit.setNotes(this.engine.chartNotes)
     // engine.load quita el loop: se vuelve a poner
     this.engine.setLoop(this.loopSeconds)

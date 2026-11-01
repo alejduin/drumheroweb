@@ -21,5 +21,8 @@ describe('songMeta', () => {
       source: { kind: 'ai' as const, createdAt: '2026-10-24T00:00:00.000Z' },
     }
     expect(songMeta(chart, 'full', 0.75)).toBe('Completo · 78 BPM (75 %) · 4/4 · transcrita por IA')
+    expect(songMeta(chart, 'full', 1, 'kick_snare')).toBe(
+      'Completo · Bombo y caja · 104 BPM · 4/4 · transcrita por IA',
+    )
   })
 })

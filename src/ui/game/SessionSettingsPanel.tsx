@@ -5,6 +5,8 @@ import { DIFFICULTIES } from '@/types'
 import type { Difficulty, Piece } from '@/types'
 import type { AudioMode } from '@/game/GameSession'
 import { lapText, waitText } from '@/game/practice'
+import { LAYER_LABELS, PRACTICE_LAYERS } from '@/chart/layers'
+import type { PracticeLayer } from '@/chart/layers'
 import type { LapResult, PracticeLoop } from '@/game/practice'
 import { formatSignedMs } from '@/game/format'
 import { DIFFICULTY_LABELS } from '@/game/songMeta'
@@ -28,6 +30,10 @@ interface SessionSettingsPanelProps {
   /** Notas de cada dificultad: una vacía no se puede elegir. */
   difficultyCounts: Readonly<Record<Difficulty, number>>
   onDifficultyChange: (difficulty: Difficulty) => void
+  /** Capa de práctica (D5) y notas de cada capa en la dificultad elegida. */
+  layer: PracticeLayer
+  layerCounts: Readonly<Record<PracticeLayer, number>>
+  onLayerChange: (layer: PracticeLayer) => void
   /** Tempo elegido (0,5–1). */
   tempo: number
   /** Las pistas se están estirando al tempo elegido. */
@@ -58,6 +64,9 @@ export function SessionSettingsPanel({
   difficulty,
   difficultyCounts,
   onDifficultyChange,
+  layer,
+  layerCounts,
+  onLayerChange,
   tempo,
   tempoPending,
   tempoError,
@@ -84,6 +93,11 @@ export function SessionSettingsPanel({
     label: DIFFICULTY_LABELS[value],
     disabled: difficultyCounts[value] === 0,
   }))
+  const layerOptions = PRACTICE_LAYERS.map(value => ({
+    value,
+    label: LAYER_LABELS[value],
+    disabled: layerCounts[value] === 0,
+  }))
   const noStems = audioMode !== 'stems'
   const tempoPct = Math.round(tempo * 100)
   return (
@@ -104,6 +118,22 @@ export function SessionSettingsPanel({
         />
         <span className="text-[11px] text-muted">
           {difficultyCounts[difficulty]} notas · cambiarla reinicia el marcador
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <SectionLabel>Capas</SectionLabel>
+        <SegmentedControl
+          aria-label="Capas"
+          options={layerOptions}
+          value={layer}
+          onChange={onLayerChange}
+          fullWidth
+        />
+        <span className="text-[11px] text-muted">
+          {layer === 'full'
+            ? 'Todas las piezas · empieza por bombo y caja y ve sumando'
+            : `${layerCounts[layer]} notas · el resto suena en la batería original`}
         </span>
       </div>
 

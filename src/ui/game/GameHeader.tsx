@@ -1,5 +1,6 @@
 import type { ChartV2, Difficulty } from '@/types'
 import type { SongClock } from '@/audio/AudioClock'
+import type { PracticeLayer } from '@/chart/layers'
 import { songMeta } from '@/game/songMeta'
 import { IconButton } from '@/ui/primitives'
 import { HudStats } from './HudStats'
@@ -12,6 +13,8 @@ interface GameHeaderProps {
   difficulty: Difficulty
   /** Tempo de la partida (1 = normal). */
   tempo?: number
+  /** Capa de práctica (D5). */
+  layer?: PracticeLayer
   clock: SongClock
   playing: boolean
   onToggle: () => void
@@ -21,6 +24,7 @@ export function GameHeader({
   chart,
   difficulty,
   tempo = 1,
+  layer = 'full',
   clock,
   playing,
   onToggle,
@@ -34,7 +38,9 @@ export function GameHeader({
         <div className="truncate text-[17px] font-bold tracking-[-0.01em]">
           {chart.title} — {chart.artist}
         </div>
-        <div className="truncate text-xs text-muted">{songMeta(chart, difficulty, tempo)}</div>
+        <div className="truncate text-xs text-muted">
+          {songMeta(chart, difficulty, tempo, layer)}
+        </div>
       </div>
       <SongProgress clock={clock} durationS={chart.durationS} />
       <div className="flex items-center gap-7">

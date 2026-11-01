@@ -6,6 +6,7 @@ import type { MixChannel, MixLevels } from '@/audio/Mixer'
 import { DEFAULT_LEVEL } from '@/constants/scoring'
 import { DEFAULT_ACCENT, applyAccent } from '@/constants/theme'
 import type { AccentName } from '@/constants/theme'
+import type { PracticeLayer } from '@/chart/layers'
 import type { Difficulty, Level, Piece, ScoreView } from '@/types'
 import { DEFAULT_MIDI_MAP, migrateMidiMap } from '@/midi/midiMap'
 
@@ -25,6 +26,8 @@ export interface UserSettings {
   tempoRamp: boolean
   /** Modo espera: la partida se detiene en cada nota hasta tocarla (D4). */
   waitMode: boolean
+  /** Última capa de práctica elegida (D5). */
+  layer: PracticeLayer
   view: ScoreView
   scrollSpeed: number // multiplicador sobre la velocidad base
   dynamicsBonus: boolean
@@ -43,6 +46,7 @@ interface SettingsStore extends UserSettings {
   setCountIn(on: boolean): void
   setTempoRamp(on: boolean): void
   setWaitMode(on: boolean): void
+  setLayer(layer: PracticeLayer): void
   setView(view: ScoreView): void
   setScrollSpeed(v: number): void
   setDynamicsBonus(on: boolean): void
@@ -61,6 +65,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   countIn: false,
   tempoRamp: false,
   waitMode: false,
+  layer: 'full',
   view: 'staff',
   scrollSpeed: 1.0,
   dynamicsBonus: true,
@@ -104,6 +109,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setCountIn: on => set({ countIn: on }),
       setTempoRamp: on => set({ tempoRamp: on }),
       setWaitMode: on => set({ waitMode: on }),
+      setLayer: layer => set({ layer }),
       setView: view => set({ view }),
       setScrollSpeed: v => set({ scrollSpeed: v }),
       setDynamicsBonus: on => set({ dynamicsBonus: on }),
