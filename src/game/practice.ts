@@ -1,8 +1,9 @@
-import type { ChartGrid } from '@/types'
+import type { ChartGrid, Piece } from '@/types'
 import type { LoopRange, TimedJudgement } from '@/engine/GameEngine'
 import type { CountInClick } from '@/engine/Metronome'
 import { MAX_TEMPO, TEMPO_STEP, normalizeTempo } from '@/audio/timeStretch'
 import { measureAt, measureRange } from '@/chart/grid'
+import { PIECE_LABELS } from '@/calibration/midiMapping'
 
 // ─── Práctica: loop A–B, cuenta y rampa de tempo (PLAN_V2 D3) ─────────────────
 
@@ -132,4 +133,10 @@ export function countInClicks(
 /** Lo que dura la cuenta en segundos de canción (del primer click hasta startS). */
 export function countInLengthS(clicks: readonly CountInClick[], startS: number): number {
   return clicks.length ? Math.max(startS - clicks[0].t, 0) : 0
+}
+
+/** Línea bajo "Modo espera" (D4): qué falta tocar para seguir. */
+export function waitText(waitingFor: readonly Piece[] | null): string {
+  if (!waitingFor) return 'Se detiene en cada nota hasta que la toques'
+  return `Esperando: ${waitingFor.map(p => PIECE_LABELS[p]).join(' + ')}`
 }

@@ -184,6 +184,23 @@ describe('bonus de dinámica', () => {
   })
 })
 
+describe('modo espera (judgeWaited)', () => {
+  it('Perfecto sin desvío, con bonus de dinámica, y la nota deja de estar pendiente', () => {
+    const evaluator = new HitEvaluator([note(1, 'snare', { velocity: 35 })], {
+      level: 'expert',
+      dynamicsBonus: true,
+    })
+    expect(evaluator.judgeWaited(0, 30)).toMatchObject({
+      judgement: 'perfect',
+      deltaMs: 0,
+      timing: 'on_time',
+      points: 100,
+      dynamicBonus: DYNAMIC_BONUS_POINTS,
+    })
+    expect(evaluator.isPending(0)).toBe(false)
+  })
+})
+
 // ─── Fallos y seek ────────────────────────────────────────────────────────────
 
 describe('expire', () => {

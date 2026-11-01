@@ -1,4 +1,12 @@
-import type { ChartSection, ChartV2, Difficulty, Level, MidiHit, WaveformPeaks } from '@/types'
+import type {
+  ChartSection,
+  ChartV2,
+  Difficulty,
+  Level,
+  MidiHit,
+  Piece,
+  WaveformPeaks,
+} from '@/types'
 import { Mixer } from '@/audio/Mixer'
 import type { MixChannel, MixLevels, MixPreset, MixerContext } from '@/audio/Mixer'
 import { createSongPlayer } from '@/audio/StemPlayer'
@@ -27,7 +35,7 @@ import {
   nextRampTempo,
 } from './practice'
 import type { LapResult, PracticeLoop } from './practice'
-import type { LoopLap, LoopRange } from '@/engine/GameEngine'
+import type { LoopLap, LoopRange, WaitState } from '@/engine/GameEngine'
 import { effectiveSections } from './sections'
 
 export type { LapResult } from './practice'
@@ -57,6 +65,8 @@ export interface SessionOptions {
   countIn?: boolean
   /** Rampa de tempo: +5 % al lograr ≥ 90 % en una vuelta del loop (D3). */
   tempoRamp?: boolean
+  /** Modo espera: la partida se detiene en cada nota hasta tocarla (D4). */
+  waitMode?: boolean
 }
 
 /** Estado de práctica para la UI: cambia por acción del usuario o por la rampa. */
@@ -70,6 +80,9 @@ export interface PracticeState {
   countIn: boolean
   tempoRamp: boolean
   lastLap: LapResult | null
+  waitMode: boolean
+  /** Piezas que faltan para seguir (modo espera); null = no está detenida. */
+  waitingFor: readonly Piece[] | null
 }
 
 // Margen alrededor del loop al estirar solo ese tramo
@@ -185,6 +198,9 @@ export class GameSession {
     this.player.onEnded(() => this.engine.finish())
     // Cada vuelta del loop: precisión y rampa de tempo
     this.engine.onLoop(lap => this.handleLap(lap))
+    // Modo espera: el audio se detiene en la nota y sigue al tocarla
+    this.engine.setWaitMode(options.waitMode ?? false)
+    this.engine.onWait(wait => this.handleWait(wait))
 
     // Clicks en el canal "metronome" del mezclador; se realinea solo al pausar o hacer seek
     this.metronome = new Metronome({
@@ -414,7 +430,29 @@ export class GameSession {
       countIn: this.countIn,
       tempoRamp: this.tempoRamp,
       lastLap: this.lastLap,
+      waitMode: this.engine.isWaitMode,
+      waitingFor: this.engine.waitState?.pending ?? null,
     }
+  }
+
+  /** Activa o quita el modo espera; quitarlo mientras espera reanuda el audio. */
+  setWaitMode(on: boolean): void {
+    if (this.disposed || on === this.engine.isWaitMode) return
+    this.engine.setWaitMode(on)
+    this.emitPractice()
+  }
+
+  private handleWait(wait: WaitState | null): void {
+    if (this.disposed) return
+    if (wait) {
+      // Detenida justo en la nota (el frame pudo llegar unos ms tarde)
+      if (this.player.isPlaying) this.player.pause()
+      this.player.seek(wait.t)
+    } else if (this.engine.phase === 'running' && !this.player.isPlaying) {
+      // Se tocó lo que faltaba: sigue sin cuenta previa
+      this.player.play()
+    }
+    this.emitPractice()
   }
 
   private emitPractice(): void {
@@ -431,12 +469,13 @@ export class GameSession {
     return this.chart.durationS
   }
 
+  /** Sonando, o detenida en una nota del modo espera (la partida sigue en curso). */
   get isPlaying(): boolean {
-    return this.player.isPlaying
+    return this.player.isPlaying || this.engine.waitState !== null
   }
 
   async play(): Promise<void> {
-    if (this.disposed || this.player.isPlaying) return
+    if (this.disposed || this.isPlaying) return
     // El AudioContext nace suspendido hasta un gesto del usuario
     if (this.ctx.state === 'suspended') await this.ctx.resume()
     if (this.engine.phase === 'ended') this.player.seek(0)
@@ -452,14 +491,15 @@ export class GameSession {
   }
 
   pause(): void {
-    if (this.disposed || !this.player.isPlaying) return
-    this.player.pause()
+    if (this.disposed || !this.isPlaying) return
+    // engine.stop suelta la espera; al reanudar se vuelve a detener en la nota
     this.engine.stop()
+    if (this.player.isPlaying) this.player.pause()
     useGameStore.getState().setPhase('paused')
   }
 
   toggle(): Promise<void> {
-    if (this.player.isPlaying) {
+    if (this.isPlaying) {
       this.pause()
       return Promise.resolve()
     }

@@ -2,15 +2,13 @@ import { matchingPreset } from '@/audio/Mixer'
 import { MAX_TEMPO, MIN_TEMPO, TEMPO_STEP } from '@/audio/timeStretch'
 import type { MixChannel, MixLevels, MixPreset } from '@/audio/Mixer'
 import { DIFFICULTIES } from '@/types'
-import type { Difficulty } from '@/types'
+import type { Difficulty, Piece } from '@/types'
 import type { AudioMode } from '@/game/GameSession'
-import { lapText } from '@/game/practice'
+import { lapText, waitText } from '@/game/practice'
 import type { LapResult, PracticeLoop } from '@/game/practice'
 import { formatSignedMs } from '@/game/format'
 import { DIFFICULTY_LABELS } from '@/game/songMeta'
 import { Button, Checkbox, Panel, SectionLabel, SegmentedControl, Slider } from '@/ui/primitives'
-
-const PHASE_D = 'Llega en la Fase D'
 
 const PRESET_LABELS: Record<MixPreset, string> = {
   play_drums: 'Tocar yo la batería',
@@ -50,6 +48,10 @@ interface SessionSettingsPanelProps {
   onRecalibrate: () => void
   dynamicsBonus: boolean
   onDynamicsBonusChange: (on: boolean) => void
+  waitMode: boolean
+  onWaitModeChange: (on: boolean) => void
+  /** Piezas que faltan para seguir; null = no está detenida. */
+  waitingFor: readonly Piece[] | null
 }
 
 export function SessionSettingsPanel({
@@ -72,6 +74,9 @@ export function SessionSettingsPanel({
   onRecalibrate,
   dynamicsBonus,
   onDynamicsBonusChange,
+  waitMode,
+  onWaitModeChange,
+  waitingFor,
 }: SessionSettingsPanelProps) {
   const preset = matchingPreset(mix)
   const difficultyOptions = DIFFICULTIES.map(value => ({
@@ -177,9 +182,12 @@ export function SessionSettingsPanel({
       </div>
 
       <div className="flex flex-col gap-2.5 border-t border-border pt-3.5">
-        <span title={PHASE_D}>
-          <Checkbox label="Modo espera" checked={false} onChange={() => {}} disabled />
-        </span>
+        <Checkbox label="Modo espera" checked={waitMode} onChange={onWaitModeChange} />
+        {waitMode && (
+          <span className="-mt-1 text-[11px] text-muted" aria-live="polite">
+            {waitText(waitingFor)}
+          </span>
+        )}
         <Checkbox
           label="Puntos por dinámica"
           checked={dynamicsBonus}

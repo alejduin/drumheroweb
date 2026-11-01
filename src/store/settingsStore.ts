@@ -23,6 +23,8 @@ export interface UserSettings {
   countIn: boolean
   /** Rampa +5 % al lograr ≥ 90 % en una vuelta del loop (D3). */
   tempoRamp: boolean
+  /** Modo espera: la partida se detiene en cada nota hasta tocarla (D4). */
+  waitMode: boolean
   view: ScoreView
   scrollSpeed: number // multiplicador sobre la velocidad base
   dynamicsBonus: boolean
@@ -40,6 +42,7 @@ interface SettingsStore extends UserSettings {
   setTempo(tempo: number): void
   setCountIn(on: boolean): void
   setTempoRamp(on: boolean): void
+  setWaitMode(on: boolean): void
   setView(view: ScoreView): void
   setScrollSpeed(v: number): void
   setDynamicsBonus(on: boolean): void
@@ -57,6 +60,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   tempo: 1,
   countIn: false,
   tempoRamp: false,
+  waitMode: false,
   view: 'staff',
   scrollSpeed: 1.0,
   dynamicsBonus: true,
@@ -99,6 +103,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setTempo: tempo => set({ tempo: normalizeTempo(tempo) }),
       setCountIn: on => set({ countIn: on }),
       setTempoRamp: on => set({ tempoRamp: on }),
+      setWaitMode: on => set({ waitMode: on }),
       setView: view => set({ view }),
       setScrollSpeed: v => set({ scrollSpeed: v }),
       setDynamicsBonus: on => set({ dynamicsBonus: on }),

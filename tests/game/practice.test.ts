@@ -7,6 +7,7 @@ import {
   countInLengthS,
   lapPrecision,
   lapText,
+  waitText,
   loopAt,
   loopFromSelection,
   loopRange,
@@ -122,5 +123,12 @@ describe('lapText', () => {
     expect(lapText(loop, { lap: 1, precision: null, tempo: 1, nextTempo: 1 }, false)).toBe(
       'Vuelta 1: sin notas',
     )
+  })
+})
+
+describe('waitText', () => {
+  it('explica el modo o dice qué falta tocar', () => {
+    expect(waitText(null)).toMatch(/hasta que la toques/)
+    expect(waitText(['snare', 'kick'])).toBe('Esperando: Caja + Bombo')
   })
 })

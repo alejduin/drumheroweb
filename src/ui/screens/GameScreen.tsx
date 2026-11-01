@@ -47,6 +47,7 @@ function readOptions(): SessionOptions {
   return {
     countIn: s.countIn,
     tempoRamp: s.tempoRamp,
+    waitMode: s.waitMode,
     difficulty: s.difficulty,
     level: s.level,
     latencyMs: s.midiLatencyOffsetMs,
@@ -193,6 +194,7 @@ function GameLayout({
   const setSavedTempo = useSettingsStore(s => s.setTempo)
   const setSavedCountIn = useSettingsStore(s => s.setCountIn)
   const setSavedRamp = useSettingsStore(s => s.setTempoRamp)
+  const setSavedWaitMode = useSettingsStore(s => s.setWaitMode)
   const tempoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // El error ya queda en practice.tempoError
   const runTempo = useCallback(
@@ -234,6 +236,10 @@ function GameLayout({
   const changeRamp = (on: boolean) => {
     setSavedRamp(on)
     session.setTempoRamp(on)
+  }
+  const changeWaitMode = (on: boolean) => {
+    setSavedWaitMode(on)
+    session.setWaitMode(on)
   }
   const changeLoop = useCallback((loop: PracticeLoop | null) => session.setLoop(loop), [session])
   const practiceSuggestion = useCallback(
@@ -347,6 +353,9 @@ function GameLayout({
           onTempoRampChange={changeRamp}
           loop={practice.loop}
           lastLap={practice.lastLap}
+          waitMode={practice.waitMode}
+          onWaitModeChange={changeWaitMode}
+          waitingFor={practice.waitingFor}
           mix={mix}
           audioMode={session.audioMode}
           onMixChange={changeMix}

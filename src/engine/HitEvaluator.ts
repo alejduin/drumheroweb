@@ -159,6 +159,26 @@ export class HitEvaluator {
     }
   }
 
+  /**
+   * Modo espera (D4): la nota se acertó con el reloj detenido en ella. Cuenta
+   * como Perfecto sin desvío (no hay timing que medir); la dinámica sí cuenta.
+   */
+  judgeWaited(noteIndex: number, velocity: number): HitJudgement {
+    const note = this.notes[noteIndex]
+    this.state[noteIndex] = JUDGED
+    return {
+      judgement: 'perfect',
+      noteIndex,
+      piece: note.piece,
+      deltaMs: 0,
+      timing: 'on_time',
+      points: this.points.perfect,
+      dynamicBonus:
+        this.dynamicsBonus && respectsDynamic(note, velocity) ? DYNAMIC_BONUS_POINTS : 0,
+      velocity,
+    }
+  }
+
   /** Fallos de las notas cuya ventana Cerca terminó antes de `songT` (en orden). */
   expire(songT: number): MissJudgement[] {
     const misses: MissJudgement[] = []

@@ -302,6 +302,42 @@ describe('GameSession', () => {
     expect(session.tempo).toBe(0.8)
   })
 
+  it('modo espera: el audio se detiene en la nota y sigue al tocarla', async () => {
+    const { ctx, session, hits } = await open({ audio: { stems: null, original: BYTES } })
+    session.setWaitMode(true)
+    expect(session.practice).toMatchObject({ waitMode: true, waitingFor: null })
+    await session.play()
+    ctx.currentTime = 1.5
+    session.engine.tick()
+    expect(session.player.isPlaying).toBe(false)
+    expect(session.isPlaying).toBe(true)
+    expect(session.clock.now()).toBeCloseTo(1)
+    expect(session.practice.waitingFor).toEqual(['snare'])
+    expect(useGameStore.getState().phase).toBe('playing')
+
+    hits.forEach(cb => cb({ instrument: 'snare', midi: 38, velocity: 80, timestamp: 0 }))
+    expect(session.player.isPlaying).toBe(true)
+    expect(session.practice.waitingFor).toBeNull()
+    expect(useGameStore.getState().hud.counts.perfect).toBe(1)
+
+    // Pausar mientras espera detiene la partida; al reanudar vuelve a esperar
+    ctx.currentTime = 3
+    session.engine.tick()
+    expect(session.practice.waitingFor).toEqual(['snare'])
+    session.pause()
+    expect(session.isPlaying).toBe(false)
+    expect(useGameStore.getState().phase).toBe('paused')
+    await session.play()
+    expect(session.player.isPlaying).toBe(true)
+    // Quitar el modo mientras espera reanuda
+    ctx.currentTime = 6
+    session.engine.tick()
+    expect(session.player.isPlaying).toBe(false)
+    session.setWaitMode(false)
+    expect(session.player.isPlaying).toBe(true)
+    expect(session.practice.waitMode).toBe(false)
+  })
+
   it('dispose quita la suscripción MIDI, cierra el contexto y limpia el store', async () => {
     const { ctx, session, hits } = await open()
     await session.play()

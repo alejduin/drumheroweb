@@ -377,3 +377,115 @@ describe('GameEngine a otro tempo (D2)', () => {
     expect(engine.judgements.length).toBe(3)
   })
 })
+
+// ─── Modo espera (D4) ─────────────────────────────────────────────────────────
+
+describe('GameEngine en modo espera (D4)', () => {
+  /** Engine en modo espera cuyo "audio" (FakeClock) se detiene en la nota y sigue al soltar. */
+  function waitSetup(notes: ChartNote[]) {
+    const s = setup(notes)
+    const waits: Array<readonly Piece[] | null> = []
+    s.engine.setWaitMode(true)
+    s.engine.onWait(w => {
+      waits.push(w ? w.pending : null)
+      if (w) {
+        s.clock.playing = false
+        s.clock.time = w.t
+      } else {
+        s.clock.playing = true
+      }
+    })
+    /** Avanza frames hasta `t` o hasta que la partida se detenga. */
+    const runUntil = (t: number) => {
+      while (s.clock.time < t && s.frames.pending && s.clock.isPlaying) {
+        s.clock.time = Math.min(s.clock.time + 0.016, t)
+        s.frames.frame()
+      }
+    }
+    const hit = (piece: Piece, velocity = 80) =>
+      s.engine.handleHit(midi(s.clock, s.clock.time + 3, piece, velocity))
+    return { ...s, waits, runUntil, hit }
+  }
+
+  it('se detiene en la nota, no la da por fallada, y sigue al tocarla', () => {
+    const { clock, engine, events, waits, runUntil, hit } = waitSetup([note(1), note(2, 'kick')])
+    runUntil(5)
+    expect(clock.isPlaying).toBe(false)
+    expect(clock.time).toBe(1)
+    expect(engine.waitState?.pending).toEqual(['snare'])
+    expect(events).toEqual([])
+
+    // Aunque pase mucho tiempo real, el golpe cuenta como Perfecto sin desvío
+    const j = hit('snare')
+    expect(j).toMatchObject({ judgement: 'perfect', deltaMs: 0, t: 1 })
+    expect(waits).toEqual([['snare'], null])
+    expect(clock.isPlaying).toBe(true)
+
+    runUntil(5)
+    expect(clock.time).toBe(2)
+    expect(engine.waitState?.pending).toEqual(['kick'])
+  })
+
+  it('un acorde espera a todas sus piezas', () => {
+    const { engine, events, waits, runUntil, hit } = waitSetup([
+      note(1, 'kick'),
+      note(1, 'hihat_closed'),
+      note(3),
+    ])
+    runUntil(5)
+    expect(engine.waitState?.pending).toEqual(['kick', 'hihat_closed'])
+    hit('hihat_closed')
+    expect(engine.waitState?.pending).toEqual(['kick'])
+    hit('kick')
+    expect(engine.waitState).toBeNull()
+    expect(counts(events).perfect).toBe(2)
+    expect(waits).toEqual([['kick', 'hihat_closed'], ['kick'], null])
+  })
+
+  it('el pad incorrecto no la suelta ni rompe nada', () => {
+    const { engine, events, hit, runUntil } = waitSetup([note(1)])
+    runUntil(5)
+    const j = hit('tom1')
+    expect(j).toMatchObject({ judgement: 'wrong_pad', expectedPiece: 'snare', t: 1 })
+    expect(engine.waitState?.pending).toEqual(['snare'])
+    expect(counts(events)).toMatchObject({ perfect: 0, miss: 0, wrong_pad: 1 })
+  })
+
+  it('un golpe a tiempo antes de la nota se evalúa normal y no detiene', () => {
+    const { clock, engine, events, playUntil } = waitSetup([note(1), note(4)])
+    playUntil(2, [{ t: 0.99, piece: 'snare' }])
+    expect(clock.isPlaying).toBe(true)
+    expect(clock.time).toBe(2)
+    expect(engine.waitState).toBeNull()
+    expect(events[0]).toMatchObject({ judgement: 'perfect' })
+    expect((events[0] as { deltaMs: number }).deltaMs).toBeCloseTo(-10)
+  })
+
+  it('apagarlo mientras espera reanuda; pausar suelta y al reanudar vuelve a esperar', () => {
+    const { clock, engine, waits, runUntil } = waitSetup([note(1), note(2)])
+    runUntil(5)
+    engine.stop()
+    expect(engine.waitState).toBeNull()
+    engine.start()
+    runUntil(5)
+    expect(engine.waitState?.t).toBe(1)
+
+    engine.setWaitMode(false)
+    expect(waits.at(-1)).toBeNull()
+    expect(clock.isPlaying).toBe(true)
+    runUntil(5)
+    // Sin modo espera las notas sin tocar vuelven a ser Fallos
+    expect(engine.waitState).toBeNull()
+    expect(clock.time).toBe(5)
+  })
+
+  it('un seek mientras espera la suelta y vuelve a buscar desde ahí', () => {
+    const { clock, engine, waits, runUntil } = waitSetup([note(1), note(3)])
+    runUntil(5)
+    engine.seek(2)
+    clock.time = 2
+    expect(waits.at(-1)).toBeNull()
+    runUntil(5)
+    expect(engine.waitState?.t).toBe(3)
+  })
+})
