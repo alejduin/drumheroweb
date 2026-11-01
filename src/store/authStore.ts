@@ -35,6 +35,11 @@ export interface AuthDeps {
   api: AuthApi | null
   /** Cambió el usuario: la biblioteca se vuelve a sincronizar. */
   onUser: (user: AuthUser) => Promise<void>
+  /**
+   * Navegador automatizado (navigator.webdriver): la captura de Vercel de cada
+   * despliegue, tests E2E. No crea cuentas anónimas: queda en modo local.
+   */
+  automated?: () => boolean
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -44,7 +49,11 @@ const messageOf = (error: unknown) =>
     ? error.message
     : 'Sin conexión con la nube. Revisa tu red y vuelve a intentarlo.'
 
-export function createAuthStore({ api, onUser }: AuthDeps) {
+export function createAuthStore({
+  api,
+  onUser,
+  automated = () => typeof navigator !== 'undefined' && navigator.webdriver === true,
+}: AuthDeps) {
   return create<AuthState>()((set, get) => {
     /** Ejecuta una acción con `busy` y deja el error a la vista. */
     async function run(action: () => Promise<void>) {
@@ -89,6 +98,10 @@ export function createAuthStore({ api, onUser }: AuthDeps) {
         set({ status: 'connecting', busy: true, error: null })
         try {
           const { user, error } = await api.currentUser()
+          if (!user && automated()) {
+            set({ status: 'off' })
+            return
+          }
           await become(user ?? (await api.signInAnonymously()))
           if (error) set({ error })
         } catch (error) {

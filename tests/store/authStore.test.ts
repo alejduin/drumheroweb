@@ -48,13 +48,14 @@ class FakeAuth implements AuthApi {
   }
 }
 
-function setup(api: FakeAuth | null = new FakeAuth()) {
+function setup(api: FakeAuth | null = new FakeAuth(), automated = false) {
   const users: AuthUser[] = []
   const store = createAuthStore({
     api,
     onUser: async user => {
       users.push(user)
     },
+    automated: () => automated,
   })
   return { store, api: api!, users }
 }
@@ -66,6 +67,19 @@ describe('authStore', () => {
     const { store } = setup(null)
     await store.getState().init()
     expect(store.getState().status).toBe('off')
+  })
+
+  it('un navegador automatizado no crea cuenta anónima; si trae sesión la usa', async () => {
+    const { store, api, users } = setup(new FakeAuth(), true)
+    await store.getState().init()
+    expect(store.getState()).toMatchObject({ status: 'off', user: null })
+    expect(api.calls).toEqual([])
+    expect(users).toEqual([])
+
+    api.session = { id: 'u1', email: 'a@b.co' }
+    const signedIn = setup(api, true)
+    await signedIn.store.getState().init()
+    expect(signedIn.store.getState()).toMatchObject({ status: 'ready', user: { id: 'u1' } })
   })
 
   it('arranca con una cuenta anónima o retoma la guardada', async () => {
