@@ -88,7 +88,9 @@ export function RecordPanel({ session, currentMeasure, onRecorded }: RecordPanel
 
     const unsubscribe = midiManager.onHit(hit => {
       if (!active.current) return
-      const latencyS = useSettingsStore.getState().midiLatencyOffsetMs / 1000
+      // La latencia es tiempo real: a otro tempo equivale a latencia × rate de canción
+      const latencyS =
+        (useSettingsStore.getState().midiLatencyOffsetMs / 1000) * session.clock.playbackRate
       hits.push({
         t: session.clock.perfToSong(hit.timestamp) - latencyS,
         piece: hit.instrument,

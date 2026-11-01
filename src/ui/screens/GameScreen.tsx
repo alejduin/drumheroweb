@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChartSection, Difficulty } from '@/types'
 import type { MixChannel } from '@/audio/Mixer'
 import type { GameSession, SessionOptions, SongBundle } from '@/game/GameSession'
@@ -18,8 +18,8 @@ import { TransportBar } from '@/ui/game/TransportBar'
 import { VideoPanel } from '@/ui/game/VideoPanel'
 import { Button } from '@/ui/primitives'
 
-// El control de tempo llega con el loop de práctica (Fase D)
-const TEMPO = 1
+// Al arrastrar el tempo se espera a que el valor se asiente antes de estirar el audio
+const TEMPO_DEBOUNCE_MS = 250
 
 interface GameScreenProps {
   bundle: SongBundle
@@ -125,7 +125,7 @@ function GameLayout({
           sections: session.sections,
           positionS: ended ? null : session.clock.now(),
           difficulty: session.difficulty,
-          tempo: TEMPO,
+          tempo: session.tempo,
           now: Date.now(),
         }),
       )
@@ -170,6 +170,53 @@ function GameLayout({
     setDifficultyState(value)
     setSavedDifficulty(value)
   }
+  // Tempo (D2): el audio se estira en un worker; mientras, suena al tempo anterior
+  const [tempo, setTempoState] = useState(() => useSettingsStore.getState().tempo)
+  // Al abrir con un tempo guardado distinto de 100 %, ya empieza preparándose
+  const [tempoPending, setTempoPending] = useState(
+    () => useSettingsStore.getState().tempo !== session.tempo,
+  )
+  const [tempoError, setTempoError] = useState<string | null>(null)
+  const setSavedTempo = useSettingsStore(s => s.setTempo)
+  const tempoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const runTempo = useCallback(
+    (value: number) => {
+      session.setTempo(value).then(
+        applied => {
+          // false = lo reemplazó un cambio posterior, que apagará el aviso
+          if (applied) setTempoPending(false)
+        },
+        (error: unknown) => {
+          setTempoPending(false)
+          setTempoState(session.tempo)
+          setTempoError(
+            `No se pudo cambiar el tempo: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        },
+      )
+    },
+    [session],
+  )
+  // Al abrir, el último tempo elegido
+  useEffect(() => {
+    const saved = useSettingsStore.getState().tempo
+    if (saved !== session.tempo) runTempo(saved)
+  }, [session, runTempo])
+  useEffect(
+    () => () => {
+      if (tempoTimer.current) clearTimeout(tempoTimer.current)
+    },
+    [],
+  )
+  const changeTempo = (value: number) => {
+    setTempoState(value)
+    setSavedTempo(value)
+    if (tempoTimer.current) clearTimeout(tempoTimer.current)
+    setTempoPending(true)
+    setTempoError(null)
+    tempoTimer.current = setTimeout(() => runTempo(value), TEMPO_DEBOUNCE_MS)
+  }
+
   const changeDynamics = (on: boolean) => {
     setDynamicsBonus(on)
     session.setDynamicsBonus(on)
@@ -203,6 +250,7 @@ function GameLayout({
       <GameHeader
         chart={chart}
         difficulty={difficulty}
+        tempo={tempo}
         clock={session.clock}
         playing={playing}
         onToggle={toggle}
@@ -257,6 +305,10 @@ function GameLayout({
             full: chart.difficulties.full.notes.length,
           }}
           onDifficultyChange={changeDifficulty}
+          tempo={tempo}
+          tempoPending={tempoPending}
+          tempoError={tempoError}
+          onTempoChange={changeTempo}
           mix={mix}
           audioMode={session.audioMode}
           onMixChange={changeMix}

@@ -4,7 +4,7 @@ import { HitEvaluator } from './HitEvaluator'
 import type { HitEvaluatorOptions } from './HitEvaluator'
 
 // Margen antes de dar una nota por Fallo: un MIDIMessageEvent con timestamp anterior
-// puede llegar después del frame (cola de eventos del hilo principal)
+// puede llegar después del frame (cola de eventos del hilo principal). Tiempo real.
 export const MISS_GRACE_S = 0.03
 
 /** Juicio con su instante en segundos de canción (nota para aciertos y Fallos, golpe para pad incorrecto). */
@@ -151,6 +151,7 @@ export class GameEngine {
     if (!this.clock.isPlaying) return null
     const t = this.clock.perfToSong(hit.timestamp)
     if (t < 0 || t > this.chart.durationS) return null
+    this.evaluator.setRate(this.clock.playbackRate)
     const result = this.evaluator.judge({ t, piece: hit.instrument, velocity: hit.velocity })
     const timed: TimedJudgement =
       result.judgement === 'wrong_pad'
@@ -164,11 +165,14 @@ export class GameEngine {
   tick(): void {
     if (!this.evaluator || !this.chart || this.currentPhase !== 'running') return
     const now = this.clock.now()
+    // Las ventanas se miden en tiempo real: siguen al tempo del reloj (D2)
+    const rate = this.clock.playbackRate
+    this.evaluator.setRate(rate)
 
     if (this.loop && now >= this.loop.endS) {
       const { startS, endS } = this.loop
       // Las notas antes de endS ya no se pueden tocar en esta vuelta: Fallo
-      this.expireUntil(endS + this.evaluator.windows.closeMs / 1000)
+      this.expireUntil(endS + this.evaluator.closeWindowS)
       this.loopLap++
       this.emit(this.loopListeners, {
         lap: this.loopLap,
@@ -184,7 +188,7 @@ export class GameEngine {
       return
     }
 
-    this.expireUntil(now - MISS_GRACE_S)
+    this.expireUntil(now - MISS_GRACE_S * rate)
   }
 
   /**

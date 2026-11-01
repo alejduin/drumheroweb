@@ -243,3 +243,42 @@ describe('rendimiento', () => {
     expect(perHitMs).toBeLessThan(5)
   })
 })
+
+// ─── Tempo (D2) ───────────────────────────────────────────────────────────────
+
+describe('HitEvaluator a otro tempo', () => {
+  it('las ventanas se miden en tiempo real: a 50 % la ventana de canción es la mitad', () => {
+    const { perfectMs, closeMs } = LEVEL_WINDOWS.intermediate
+    const evaluator = new HitEvaluator([note(10), note(20)], { level: 'intermediate' })
+    evaluator.setRate(0.5)
+    // 15 ms de canción = 30 ms reales: Perfecto en el límite
+    const perfect = evaluator.judge(hit(10 + (perfectMs * 0.5) / 1000))
+    expect(perfect.judgement).toBe('perfect')
+    expect(perfect.judgement !== 'wrong_pad' && perfect.deltaMs).toBeCloseTo(perfectMs, 6)
+    // 41 ms de canción = 82 ms reales: fuera de Cerca
+    expect(evaluator.judge(hit(20 + (closeMs * 0.5 + 1) / 1000)).judgement).toBe('wrong_pad')
+    expect(evaluator.closeWindowS).toBeCloseTo((closeMs * 0.5) / 1000, 9)
+  })
+
+  it('la latencia del kit (tiempo real) se resta escalada al tiempo de canción', () => {
+    const evaluator = new HitEvaluator([note(10)], { level: 'expert', latencyMs: 40 })
+    evaluator.setRate(0.5)
+    // 40 ms reales de latencia = 20 ms de canción
+    const result = evaluator.judge(hit(10.02))
+    expect(result.judgement).toBe('perfect')
+    expect(result.judgement !== 'wrong_pad' && result.deltaMs).toBeCloseTo(0, 6)
+  })
+
+  it('una nota expira cuando cierra su ventana en tiempo real', () => {
+    const { closeMs } = LEVEL_WINDOWS.beginner
+    const evaluator = new HitEvaluator([note(10)], { level: 'beginner' })
+    evaluator.setRate(0.5)
+    const windowS = (closeMs * 0.5) / 1000
+    expect(evaluator.expire(10 + windowS - 0.001)).toEqual([])
+    expect(evaluator.expire(10 + windowS + 0.001)).toHaveLength(1)
+  })
+
+  it('rechaza un rate inválido', () => {
+    expect(() => new HitEvaluator([], { level: 'expert' }).setRate(0)).toThrow(RangeError)
+  })
+})

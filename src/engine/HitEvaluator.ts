@@ -79,12 +79,18 @@ const SKIPPED = 2 // anterior a un seek: ni se acierta ni cuenta como Fallo
  * Puro y sin reloj: el GameEngine le pasa los golpes ya convertidos a segundos de canción
  * (MIDIMessageEvent.timeStamp → clock.perfToSong) y el tiempo actual para expirar.
  * El engine debe procesar los golpes recibidos antes de expirar en cada frame.
+ *
+ * Con otro tempo (D2) las ventanas y la latencia se miden en tiempo real, no de
+ * canción: a 50 % una ventana de ±30 ms abarca ±15 ms de canción, y los deltaMs
+ * de los juicios son los milisegundos que el usuario se adelantó o atrasó.
  */
 export class HitEvaluator {
   readonly windows: HitWindows
   private readonly points: JudgementPoints
   private readonly latencyS: number
   private dynamicsBonus: boolean
+  /** Tempo de reproducción (1 = normal): segundos de canción por segundo real. */
+  private rate = 1
   private readonly notes: readonly ChartNote[]
   private readonly allIndices: readonly number[]
   private readonly byPiece = new Map<Piece, number[]>()
@@ -111,8 +117,19 @@ export class HitEvaluator {
     this.dynamicsBonus = on
   }
 
+  /** Tempo de reproducción actual (lo sincroniza el GameEngine con el reloj). */
+  setRate(rate: number): void {
+    if (!(rate > 0)) throw new RangeError(`rate inválido: ${rate}`)
+    this.rate = rate
+  }
+
+  /** Ventana Cerca en segundos de canción al tempo actual. */
+  get closeWindowS(): number {
+    return (this.windows.closeMs * this.rate) / 1000
+  }
+
   judge(hit: PlayedHit): HitJudgement {
-    const t = hit.t - this.latencyS
+    const t = hit.t - this.latencyS * this.rate
     const index = this.closestPending(this.byPiece.get(hit.piece) ?? [], t)
 
     if (index === null) {
@@ -126,7 +143,7 @@ export class HitEvaluator {
     }
 
     const note = this.notes[index]
-    const deltaMs = (t - note.t) * 1000
+    const deltaMs = this.realDeltaMs(t, note.t)
     const judgement = classifyDelta(deltaMs, this.windows)!
     this.state[index] = JUDGED
     return {
@@ -146,7 +163,9 @@ export class HitEvaluator {
   expire(songT: number): MissJudgement[] {
     const misses: MissJudgement[] = []
     // Un golpe que llegue ahora se evalúa en songT − latencia: hasta ahí sigue abierta la ventana
-    const limitMs = (songT - this.latencyS) * 1000 - this.windows.closeMs - BOUNDARY_EPSILON_MS
+    const limitMs =
+      (songT - this.latencyS * this.rate) * 1000 -
+      (this.windows.closeMs + BOUNDARY_EPSILON_MS) * this.rate
     while (this.expireCursor < this.notes.length) {
       const index = this.expireCursor
       const note = this.notes[index]
@@ -174,7 +193,7 @@ export class HitEvaluator {
 
   /** Índice de la nota pendiente más cercana a t dentro de la ventana Cerca (empate: la anterior). */
   private closestPending(indices: readonly number[], t: number): number | null {
-    const windowS = (this.windows.closeMs + BOUNDARY_EPSILON_MS) / 1000
+    const windowS = ((this.windows.closeMs + BOUNDARY_EPSILON_MS) * this.rate) / 1000
     let best: number | null = null
     let bestDistance = Infinity
     for (let k = lowerBound(this.notes, indices, t - windowS); k < indices.length; k++) {
@@ -189,6 +208,11 @@ export class HitEvaluator {
     }
     if (best === null) return null
     // La búsqueda va en segundos; la clasificación en ms decide el límite exacto
-    return classifyDelta((t - this.notes[best].t) * 1000, this.windows) ? best : null
+    return classifyDelta(this.realDeltaMs(t, this.notes[best].t), this.windows) ? best : null
+  }
+
+  /** Distancia golpe − nota en milisegundos reales al tempo actual. */
+  private realDeltaMs(hitT: number, noteT: number): number {
+    return ((hitT - noteT) * 1000) / this.rate
   }
 }

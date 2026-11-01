@@ -3,7 +3,9 @@ import type { ChartNote, ChartV2, MidiHit } from '@/types'
 import { DEFAULT_MIX } from '@/audio/Mixer'
 import type { FrameScheduler } from '@/engine/GameEngine'
 import { GameSession, SILENT_SAMPLE_RATE } from '@/game/GameSession'
-import type { SessionContext, SessionOptions, SongBundle } from '@/game/GameSession'
+import type { SessionContext, SessionDeps, SessionOptions, SongBundle } from '@/game/GameSession'
+import { stretchChannels } from '@/audio/timeStretch'
+import type { StretchFn } from '@/audio/tempo'
 import { useGameStore } from '@/store/gameStore'
 import { FakeAudioContext } from '../fakes/FakeAudioContext'
 
@@ -72,7 +74,7 @@ const OPTIONS: SessionOptions = {
 
 const NOTES: ChartNote[] = [1, 2, 3].map(t => ({ t, piece: 'snare', velocity: 80, confidence: 1 }))
 
-async function open(bundle: Partial<SongBundle> = {}) {
+async function open(bundle: Partial<SongBundle> = {}, deps: Partial<SessionDeps> = {}) {
   const ctx = new FakeSessionContext()
   const hits = new Set<(hit: MidiHit) => void>()
   const scheduler: FrameScheduler = { request: () => 1, cancel: () => {} }
@@ -87,6 +89,7 @@ async function open(bundle: Partial<SongBundle> = {}) {
       },
       scheduler,
       perfNow: () => 0,
+      ...deps,
     },
   )
   return { ctx, session, hits }
@@ -173,6 +176,72 @@ describe('GameSession', () => {
     expect(session.engine.chartNotes.map(n => n.t)).toEqual([1, 2, 3])
     expect(useGameStore.getState().phase).toBe('paused')
     expect(useGameStore.getState().hud.score).toBe(0)
+  })
+
+  it('setTempo estira las pistas y sigue desde la misma posición al nuevo tempo', async () => {
+    const stretch = vi.fn<StretchFn>(async (channels, sampleRate, rate) =>
+      stretchChannels(channels, sampleRate, rate),
+    )
+    const { ctx, session } = await open(
+      { audio: { stems: { drums: BYTES, backing: BYTES }, original: null } },
+      { stretch },
+    )
+    session.seek(2)
+    await session.play()
+    expect(await session.setTempo(0.77)).toBe(true) // se redondea a pasos de 5 %
+    expect(session.tempo).toBe(0.75)
+    expect(session.player.playbackRate).toBe(0.75)
+    // Las dos pistas en una sola llamada: misma alineación
+    expect(stretch).toHaveBeenCalledTimes(1)
+    expect(stretch.mock.calls[0][0]).toHaveLength(2)
+    const [drums, backing] = ctx.sources.slice(-2)
+    expect(drums.buffer?.duration).toBeCloseTo((DURATION_S - 2) / 0.75, 1)
+    expect(drums.playbackRate.value).toBe(1)
+    expect(drums.startArgs?.[1]).toBeCloseTo(session.clock.songAtCtx(ctx.currentTime) / 0.75, 1)
+    expect(backing.startArgs).toEqual(drums.startArgs)
+    expect(session.isPlaying).toBe(true)
+  })
+
+  it('un cambio de tempo nuevo cancela el anterior', async () => {
+    let release: () => void = () => {}
+    const stretch = vi.fn<StretchFn>(
+      (channels, sampleRate, rate, signal) =>
+        new Promise((resolve, reject) => {
+          signal?.addEventListener('abort', () =>
+            reject(new DOMException('cancelado', 'AbortError')),
+          )
+          release = () => resolve(stretchChannels(channels, sampleRate, rate))
+        }),
+    )
+    const { session } = await open({ audio: { stems: null, original: BYTES } }, { stretch })
+    const first = session.setTempo(0.5)
+    const second = session.setTempo(0.8)
+    release()
+    expect(await first).toBe(false)
+    expect(await second).toBe(true)
+    expect(session.player.playbackRate).toBe(0.8)
+    // Volver a 100 % no estira nada
+    expect(await session.setTempo(1)).toBe(true)
+    expect(stretch).toHaveBeenCalledTimes(2)
+    expect(session.player.playbackRate).toBe(1)
+  })
+
+  it('sin audio el tempo solo escala la pista silenciosa', async () => {
+    const stretch = vi.fn<StretchFn>()
+    const { session } = await open({}, { stretch })
+    expect(await session.setTempo(0.6)).toBe(true)
+    expect(session.player.playbackRate).toBe(0.6)
+    expect(stretch).not.toHaveBeenCalled()
+  })
+
+  it('si el time-stretch falla, se queda en el tempo que sonaba', async () => {
+    const stretch = vi.fn<StretchFn>(async () => {
+      throw new Error('sin memoria')
+    })
+    const { session } = await open({ audio: { stems: null, original: BYTES } }, { stretch })
+    await expect(session.setTempo(0.5)).rejects.toThrow('sin memoria')
+    expect(session.tempo).toBe(1)
+    expect(session.player.playbackRate).toBe(1)
   })
 
   it('dispose quita la suscripción MIDI, cierra el contexto y limpia el store', async () => {

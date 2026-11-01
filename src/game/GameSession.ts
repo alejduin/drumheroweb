@@ -5,6 +5,9 @@ import { createSongPlayer } from '@/audio/StemPlayer'
 import type { PlayerContext, StemPlayer } from '@/audio/StemPlayer'
 import { loadSongAudio } from '@/audio/loadSongAudio'
 import { createKitBuffers } from '@/audio/drumSynth'
+import { stretchBuffers, stretchInWorker } from '@/audio/tempo'
+import type { StretchBufferContext, StretchFn } from '@/audio/tempo'
+import { normalizeTempo } from '@/audio/timeStretch'
 import type { KitBufferContext } from '@/audio/drumSynth'
 import type { DecodeContext, SongAudio, SongAudioSources } from '@/audio/loadSongAudio'
 import { GameEngine } from '@/engine/GameEngine'
@@ -42,7 +45,13 @@ export interface SessionOptions {
 
 /** Subconjunto de AudioContext que usa la sesión (fake en tests). */
 export interface SessionContext
-  extends PlayerContext, MixerContext, DecodeContext, MetronomeContext, KitBufferContext {
+  extends
+    PlayerContext,
+    MixerContext,
+    DecodeContext,
+    MetronomeContext,
+    KitBufferContext,
+    StretchBufferContext {
   readonly state: AudioContextState
   resume(): Promise<void>
   close(): Promise<void>
@@ -54,6 +63,8 @@ export interface SessionDeps {
   subscribeHits: (callback: (hit: MidiHit) => void) => () => void
   scheduler?: FrameScheduler
   perfNow?: () => number
+  /** Time-stretch de las pistas (Web Worker en la app). */
+  stretch?: StretchFn
 }
 
 /** Audio de la sesión: los stems, el MP3 original (fallback) o la pista silenciosa. */
@@ -85,6 +96,11 @@ export class GameSession {
   private options: SessionOptions
   private unbindScoring: () => void
   private disposed = false
+  /** Pistas originales (en el orden del StemPlayer), fuente del time-stretch. */
+  private readonly trackBuffers: readonly AudioBuffer[]
+  private readonly stretch: StretchFn
+  private targetTempo = 1
+  private tempoJob: AbortController | null = null
 
   private constructor(
     ctx: SessionContext,
@@ -110,6 +126,8 @@ export class GameSession {
     this.fallbackReason = song.fallbackReason
     this.peaks = bundle.peaks ?? computePeaks(song.tracks[song.tracks.length - 1].buffer)
 
+    this.trackBuffers = song.tracks.map(t => t.buffer)
+    this.stretch = deps.stretch ?? stretchInWorker
     this.player = createSongPlayer(ctx, song, this.mixer, deps.perfNow)
     this.engine = new GameEngine({
       clock: this.player.clock,
@@ -190,6 +208,53 @@ export class GameSession {
     this.seek(position)
   }
 
+  /** Tempo pedido (0,5–1). Mientras se prepara, la canción sigue al tempo anterior. */
+  get tempo(): number {
+    return this.targetTempo
+  }
+
+  /**
+   * Cambia el tempo sin cambiar el tono (PLAN_V2 D2). Las pistas se estiran en un
+   * worker (unos segundos) y, al terminar, la canción sigue desde la misma posición
+   * al nuevo tempo; mientras tanto suena como antes. Un cambio nuevo cancela el que
+   * estaba en curso. Resuelve true si se aplicó, false si otro cambio lo reemplazó.
+   */
+  async setTempo(tempo: number): Promise<boolean> {
+    if (this.disposed) return false
+    const rate = normalizeTempo(tempo)
+    this.tempoJob?.abort()
+    this.tempoJob = null
+    this.targetTempo = rate
+    if (rate === this.player.playbackRate) return true
+
+    // Sin música (pista silenciosa) no hay tono que conservar
+    if (rate === 1 || this.audioMode === 'silent') {
+      this.player.setTempo(rate, null)
+      return true
+    }
+    const job = new AbortController()
+    this.tempoJob = job
+    try {
+      const buffers = await stretchBuffers(
+        this.ctx,
+        this.trackBuffers,
+        rate,
+        this.stretch,
+        job.signal,
+      )
+      if (job.signal.aborted || this.disposed) return false
+      this.player.setTempo(rate, buffers)
+      return true
+    } catch (error) {
+      if (job.signal.aborted || this.disposed) return false
+      // Si falla, se queda en el tempo que estaba sonando
+      this.targetTempo = this.player.playbackRate
+      throw error
+    } finally {
+      if (this.tempoJob === job) this.tempoJob = null
+    }
+  }
+
   get clock() {
     return this.player.clock
   }
@@ -253,6 +318,7 @@ export class GameSession {
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
+    this.tempoJob?.abort()
     this.unsubs.forEach(unsub => unsub())
     this.unbindScoring()
     this.engine.stop()

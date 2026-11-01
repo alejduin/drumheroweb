@@ -24,9 +24,6 @@ import { DistributionBar } from '@/ui/results/DistributionBar'
 import { MeasureHeatmap } from '@/ui/results/MeasureHeatmap'
 import { PieceAccuracyGrid } from '@/ui/results/PieceAccuracyGrid'
 
-// El control de tempo llega con el loop de práctica (Fase D); hoy siempre es 100 %
-const TEMPO = 1
-
 interface ResultsScreenProps {
   chart: ChartV2
   results: ScoreResults
@@ -39,6 +36,8 @@ interface ResultsScreenProps {
 /** Resultados de la partida (design/Results.dc.html, PLAN_V2 §4.5). */
 export function ResultsScreen({ chart, results, playedAt, onRetry, onMenu }: ResultsScreenProps) {
   const level = useSettingsStore(s => s.level)
+  // El tempo con que se jugó (el último elegido)
+  const tempo = useSettingsStore(s => s.tempo)
   const recordPlay = useProgressStore(s => s.recordPlay)
   // Progreso de antes de esta partida (se lee una vez, antes de guardarla)
   const [before] = useState(() => useProgressStore.getState().songs[chart.id] ?? null)
@@ -76,7 +75,7 @@ export function ResultsScreen({ chart, results, playedAt, onRetry, onMenu }: Res
         <header className="flex items-end justify-between gap-6">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs tracking-[0.08em] text-muted uppercase">
-              {chart.title} · {LEVEL_LABELS[level]} · Tempo {Math.round(TEMPO * 100)}%
+              {chart.title} · {LEVEL_LABELS[level]} · Tempo {Math.round(tempo * 100)}%
             </span>
             <h1 className="text-[34px] font-extrabold tracking-[-0.02em]">{headline}</h1>
           </div>

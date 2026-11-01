@@ -355,3 +355,25 @@ describe('estados', () => {
     expect(engine.judgements).toEqual([])
   })
 })
+
+describe('GameEngine a otro tempo (D2)', () => {
+  it('juzga con las ventanas en tiempo real que marca el reloj', () => {
+    const { clock, engine, events, playUntil } = setup([note(2, 'snare'), note(4, 'snare')])
+    clock.playbackRate = 0.5
+    const { closeMs } = LEVEL_WINDOWS.intermediate
+    // 50 ms de canción tarde = 100 ms reales: a 50 % es Fallo, a 100 % habría sido Cerca
+    playUntil(2.05, [{ t: 2.05, piece: 'snare' }])
+    expect(events.at(-1)?.judgement).toBe('wrong_pad')
+    // Fallo cuando cierra la ventana real (+ margen real), no antes
+    playUntil(2 + (closeMs * 0.5) / 1000 + MISS_GRACE_S * 0.5 - 0.002)
+    expect(events.filter(e => e.judgement === 'miss')).toHaveLength(0)
+    playUntil(2.2)
+    expect(events.filter(e => e.judgement === 'miss')).toHaveLength(1)
+    // Un golpe 20 ms de canción tarde = 40 ms reales: Cerca con deltaMs real
+    playUntil(4.02, [{ t: 4.02, piece: 'snare' }])
+    const last = events.at(-1)!
+    expect(last.judgement).toBe('close')
+    expect(last.judgement === 'close' && last.deltaMs).toBeCloseTo(40, 3)
+    expect(engine.judgements.length).toBe(3)
+  })
+})

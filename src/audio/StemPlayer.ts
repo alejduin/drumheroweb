@@ -31,6 +31,8 @@ export class StemPlayer {
   readonly durationS: number
   private sources: AudioBufferSourceNode[] = []
   private rate = 1
+  /** Pistas ya estiradas a `rate` (mismo orden que tracks); null = las originales. */
+  private stretched: readonly AudioBuffer[] | null = null
   private onEndedCallback: (() => void) | null = null
 
   private readonly ctx: PlayerContext
@@ -63,18 +65,33 @@ export class StemPlayer {
 
     const when = this.ctx.currentTime + START_LEAD_S
     const sources: AudioBufferSourceNode[] = []
-    for (const track of this.tracks) {
+    let longest: AudioBufferSourceNode | null = null
+    let longestS = -1
+    for (const [i, track] of this.tracks.entries()) {
       // Un stem más corto que la posición no tiene nada que sonar
       if (offset >= track.buffer.duration) continue
       const source = this.ctx.createBufferSource()
-      source.buffer = track.buffer
-      source.playbackRate.value = this.rate
-      source.connect(track.output)
-      source.start(when, offset)
+      const stretched = this.stretched?.[i]
+      if (stretched) {
+        // Ya está a otro tempo: suena a velocidad normal desde la posición equivalente
+        source.buffer = stretched
+        source.playbackRate.value = 1
+        source.connect(track.output)
+        source.start(when, offset / this.rate)
+      } else {
+        source.buffer = track.buffer
+        source.playbackRate.value = this.rate
+        source.connect(track.output)
+        source.start(when, offset)
+      }
       sources.push(source)
+      // El fin natural lo marca la pista más larga
+      if (track.buffer.duration > longestS) {
+        longestS = track.buffer.duration
+        longest = source
+      }
     }
-    // El fin natural lo marca la pista más larga
-    const longest = sources.reduce((a, b) => (b.buffer!.duration > a.buffer!.duration ? b : a))
+    if (!longest) return
     longest.onended = () => {
       // Solo el fin natural; un stop() por pausa/seek ya quitó las fuentes
       if (this.sources !== sources) return
@@ -100,13 +117,27 @@ export class StemPlayer {
   }
 
   /**
-   * Velocidad de reproducción (1 = normal). Por ahora cambia también el tono;
-   * el time-stretch sin cambio de tono llega en D2. El reloj escala con el rate.
+   * Velocidad cambiando también el tono (playbackRate de cada fuente). Sirve para
+   * la pista silenciosa de los charts sin audio; con música, setTempo.
    */
   setPlaybackRate(rate: number): void {
+    this.setTempo(rate, null)
+  }
+
+  /**
+   * Tempo sin cambio de tono (PLAN_V2 D2): `stretched` son las pistas ya estiradas
+   * a `rate` (stretchBuffers), una por pista y en orden; null = las originales con
+   * playbackRate. El reloj escala con el rate, así todo lo demás sigue en segundos
+   * de canción. Si estaba sonando, sigue desde la misma posición.
+   */
+  setTempo(rate: number, stretched: readonly AudioBuffer[] | null): void {
     if (!(rate > 0)) throw new RangeError(`playbackRate inválido: ${rate}`)
+    if (stretched && stretched.length !== this.tracks.length) {
+      throw new Error('setTempo: hace falta un buffer estirado por pista')
+    }
     this.restart(() => {
       this.rate = rate
+      this.stretched = rate === 1 ? null : stretched
     })
   }
 

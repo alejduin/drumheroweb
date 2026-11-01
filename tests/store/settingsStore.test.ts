@@ -38,3 +38,15 @@ describe('syncAccentWithSettings', () => {
     expect(root.hasAttribute('data-accent')).toBe(false)
   })
 })
+
+describe('tempo guardado', () => {
+  it('se guarda redondeado a 50–100 % en pasos de 5 %', async () => {
+    const { useSettingsStore } = await import('@/store/settingsStore')
+    expect(useSettingsStore.getState().tempo).toBe(1)
+    useSettingsStore.getState().setTempo(0.62)
+    expect(useSettingsStore.getState().tempo).toBe(0.6)
+    useSettingsStore.getState().setTempo(0.2)
+    expect(useSettingsStore.getState().tempo).toBe(0.5)
+    useSettingsStore.getState().setTempo(1)
+  })
+})

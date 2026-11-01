@@ -1,4 +1,5 @@
 import { matchingPreset } from '@/audio/Mixer'
+import { MAX_TEMPO, MIN_TEMPO, TEMPO_STEP } from '@/audio/timeStretch'
 import type { MixChannel, MixLevels, MixPreset } from '@/audio/Mixer'
 import { DIFFICULTIES } from '@/types'
 import type { Difficulty } from '@/types'
@@ -27,6 +28,13 @@ interface SessionSettingsPanelProps {
   /** Notas de cada dificultad: una vacía no se puede elegir. */
   difficultyCounts: Readonly<Record<Difficulty, number>>
   onDifficultyChange: (difficulty: Difficulty) => void
+  /** Tempo elegido (0,5–1). */
+  tempo: number
+  /** Las pistas se están estirando al tempo elegido. */
+  tempoPending: boolean
+  /** Por qué no se pudo aplicar el último tempo, si falló. */
+  tempoError: string | null
+  onTempoChange: (tempo: number) => void
   mix: Readonly<MixLevels>
   audioMode: AudioMode
   onMixChange: (channel: MixChannel, level: number) => void
@@ -41,6 +49,10 @@ export function SessionSettingsPanel({
   difficulty,
   difficultyCounts,
   onDifficultyChange,
+  tempo,
+  tempoPending,
+  tempoError,
+  onTempoChange,
   mix,
   audioMode,
   onMixChange,
@@ -57,6 +69,7 @@ export function SessionSettingsPanel({
     disabled: difficultyCounts[value] === 0,
   }))
   const noStems = audioMode !== 'stems'
+  const tempoPct = Math.round(tempo * 100)
   return (
     <Panel
       as="aside"
@@ -78,13 +91,28 @@ export function SessionSettingsPanel({
         </span>
       </div>
 
-      <div className="flex flex-col gap-2" title={PHASE_D}>
+      <div className="flex flex-col gap-2">
         <div className="flex justify-between">
           <SectionLabel>Tempo</SectionLabel>
-          <span className="font-mono text-xs">100%</span>
+          <span className="font-mono text-xs">{tempoPct}%</span>
         </div>
-        <Slider aria-label="Tempo" value={100} min={50} max={100} onChange={() => {}} disabled />
-        <Checkbox label="Rampa +5% al lograr 90%" checked={false} onChange={() => {}} disabled />
+        <Slider
+          aria-label="Tempo"
+          value={tempoPct}
+          valueText={`${tempoPct} %`}
+          min={MIN_TEMPO * 100}
+          max={MAX_TEMPO * 100}
+          step={TEMPO_STEP * 100}
+          onChange={v => onTempoChange(v / 100)}
+        />
+        <span className="text-[11px] text-muted" aria-live="polite">
+          {tempoPending
+            ? `Preparando el audio al ${tempoPct} %…`
+            : (tempoError ?? 'Más lento sin cambiar el tono · las ventanas siguen en tiempo real')}
+        </span>
+        <span title={PHASE_D}>
+          <Checkbox label="Rampa +5% al lograr 90%" checked={false} onChange={() => {}} disabled />
+        </span>
       </div>
 
       <div className="flex flex-col gap-2.5">

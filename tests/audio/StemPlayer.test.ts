@@ -107,6 +107,42 @@ describe('StemPlayer', () => {
     expect(() => player.setPlaybackRate(0)).toThrow(RangeError)
   })
 
+  it('setTempo con pistas estiradas suena a velocidad 1 desde la posición equivalente', () => {
+    const { ctx, player, advance } = setup([60, 60])
+    player.play()
+    advance(START_LEAD_S + 4)
+    const stretched = [fakeBuffer(80), fakeBuffer(80)]
+    player.setTempo(0.75, stretched)
+    expect(player.playbackRate).toBe(0.75)
+    const [drums, backing] = ctx.sources.slice(-2)
+    expect(drums.buffer).toBe(stretched[0])
+    expect(backing.buffer).toBe(stretched[1])
+    expect(drums.playbackRate.value).toBe(1)
+    // El segundo 4 de la canción está en el 4 / 0,75 del audio estirado
+    expect(drums.startArgs?.[1]).toBeCloseTo(4 / 0.75, 9)
+    expect(backing.startArgs?.[0]).toBe(drums.startArgs?.[0])
+    // El reloj sigue en segundos de canción, a 0,75 por segundo real
+    advance(START_LEAD_S + 2)
+    expect(player.clock.now()).toBeCloseTo(4 + 2 * 0.75, 9)
+  })
+
+  it('setTempo(1) vuelve a las pistas originales', () => {
+    const { ctx, player, advance } = setup([60])
+    player.setTempo(0.5, [fakeBuffer(120)])
+    player.play()
+    advance(START_LEAD_S + 2)
+    player.setTempo(1, null)
+    expect(ctx.lastSource.buffer?.duration).toBe(60)
+    expect(ctx.lastSource.playbackRate.value).toBe(1)
+    expect(ctx.lastSource.startArgs?.[1]).toBeCloseTo(1, 9)
+  })
+
+  it('setTempo exige un buffer estirado por pista', () => {
+    const { player } = setup([60, 60])
+    expect(() => player.setTempo(0.5, [fakeBuffer(120)])).toThrow()
+    expect(() => player.setTempo(-1, null)).toThrow(RangeError)
+  })
+
   it('con stems de distinta duración la duración es la mayor y el corto no arranca pasado su fin', () => {
     const { ctx, player } = setup([30, 31])
     expect(player.durationS).toBe(31)

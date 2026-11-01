@@ -13,8 +13,8 @@ export interface LastSession {
   artist: string
   /** Sección donde se dejó la partida; null = desde el principio. */
   section: { name: string; startMeasure: number } | null
-  /** Hoy siempre 'full' y 1: el reductor y el control de tempo llegan en la Fase D. */
   difficulty: Difficulty
+  /** Tempo de la partida (0,5–1). */
   tempo: number
   updatedAt: number // Date.now()
 }

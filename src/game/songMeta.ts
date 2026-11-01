@@ -12,15 +12,20 @@ const SOURCE_LABELS: Record<ChartSourceKind, string> = {
   builtin: 'incluida en la app',
 }
 
-/** "Completo · 104 BPM · 4/4 · transcrita por IA" (bajo el título del header). */
+/**
+ * "Completo · 104 BPM · 4/4 · transcrita por IA" (bajo el título del header).
+ * A otro tempo, el BPM que suena: "Completo · 78 BPM (75 %) · 4/4 · …".
+ */
 export function songMeta(
   chart: Pick<ChartV2, 'bpm' | 'timeSignature' | 'source'>,
   difficulty: Difficulty,
+  tempo = 1,
 ): string {
   const [beats, unit] = chart.timeSignature
+  const bpm = `${Math.round(chart.bpm * tempo)} BPM`
   return [
     DIFFICULTY_LABELS[difficulty],
-    `${Math.round(chart.bpm)} BPM`,
+    tempo === 1 ? bpm : `${bpm} (${Math.round(tempo * 100)} %)`,
     `${beats}/${unit}`,
     SOURCE_LABELS[chart.source.kind],
   ].join(' · ')

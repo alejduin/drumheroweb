@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_MIX, clampLevel } from '@/audio/Mixer'
+import { normalizeTempo } from '@/audio/timeStretch'
 import type { MixChannel, MixLevels } from '@/audio/Mixer'
 import { DEFAULT_LEVEL } from '@/constants/scoring'
 import { DEFAULT_ACCENT, applyAccent } from '@/constants/theme'
@@ -16,6 +17,8 @@ export interface UserSettings {
   level: Level
   /** Última dificultad elegida en una partida (PLAN_V2 D1). */
   difficulty: Difficulty
+  /** Último tempo elegido, 0,5–1 (PLAN_V2 D2). */
+  tempo: number
   view: ScoreView
   scrollSpeed: number // multiplicador sobre la velocidad base
   dynamicsBonus: boolean
@@ -30,6 +33,7 @@ interface SettingsStore extends UserSettings {
   setMidiMap(map: Record<number, Piece>): void
   setLevel(level: Level): void
   setDifficulty(difficulty: Difficulty): void
+  setTempo(tempo: number): void
   setView(view: ScoreView): void
   setScrollSpeed(v: number): void
   setDynamicsBonus(on: boolean): void
@@ -44,6 +48,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   midiMap: { ...DEFAULT_MIDI_MAP },
   level: DEFAULT_LEVEL,
   difficulty: 'full',
+  tempo: 1,
   view: 'staff',
   scrollSpeed: 1.0,
   dynamicsBonus: true,
@@ -83,6 +88,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setMidiMap: map => set({ midiMap: map }),
       setLevel: level => set({ level }),
       setDifficulty: difficulty => set({ difficulty }),
+      setTempo: tempo => set({ tempo: normalizeTempo(tempo) }),
       setView: view => set({ view }),
       setScrollSpeed: v => set({ scrollSpeed: v }),
       setDynamicsBonus: on => set({ dynamicsBonus: on }),
